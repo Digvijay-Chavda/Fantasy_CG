@@ -139,6 +139,7 @@ export function Board() {
         <div className="overlay">
           <h1>{game.winner === 'draw' ? 'Draw' : game.winner === 'player' ? 'Victory' : 'Defeat'}</h1>
           <p>{scores.player} – {scores.ai}</p>
+          {scores.player === scores.ai && <p className="tiebreak">Cards tied — decided by total card strength</p>}
           <button onClick={s.restart}>Play again</button>
         </div>
       )}

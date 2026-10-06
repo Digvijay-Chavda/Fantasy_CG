@@ -20,7 +20,7 @@ npm run build
 - On your turn, **drag a card from your hand onto an empty cell** (or click the card, then the cell).
 - When you place a card, each **directly adjacent enemy card** flips to your colour if your number on the touching edge is **strictly higher** than theirs on the facing edge (e.g. your 12 beats their 11). Equal or lower does nothing. Flips **do not chain**.
 - Blue cards are yours, red cards are the enemy's. Captured cards change colour, and can be captured back.
-- When the board is full, whoever owns **the most cards on the board wins** (a tie is a draw).
+- When the board is full, whoever owns **the most cards on the board wins**. If the counts are equal, the **total of all numbers on your cards** breaks the tie; only if that is equal too is it a draw.
 - The game log describes every move, including each capture. Refreshing the page keeps your game; only **Restart** deals a new one. Pick **Easy** or **Normal** AI in the controls.
 
 ## Structure

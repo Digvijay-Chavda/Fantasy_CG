@@ -67,4 +67,5 @@ button:disabled { opacity: .4; cursor: default; }
 .error { color: #ff8a8a; }
 .difficulty { font-size: 13px; opacity: .85; margin-left: auto; }
 .difficulty select { background: #2a2038; color: inherit; border: 1px solid #4a3d63; border-radius: 4px; padding: 4px; }
+.tiebreak { opacity: .7; font-size: 13px; margin: 0; }
 .overlay { position: fixed; inset: 0; background: #000b; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
