@@ -1,14 +1,20 @@
+import gsap from 'gsap';
 import { create } from 'zustand';
 import { CARD_POOL, CARDS } from '../data/cards';
 import { nextAiAction, type AiDifficulty, type AiPlayer } from '../game/ai/runner';
 import { GameEngine } from '../game/engine';
-import type { GameEvent, GameState } from '../game/engine';
+import type { GameEvent, GameState, PlayerId } from '../game/engine';
 import { describeEvents } from '../game/log';
+import { audio } from '../render/audio';
+import type { TableScene } from '../render/TableScene';
 
-const AI_DELAY_MS = 800;
 const LOG_LIMIT = 80;
 const SAVE_KEY = 'fantasy-cg-triad-save-v1';
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const SETTINGS_KEY = 'fantasy-cg-settings-v1';
+const STATS_KEY = 'fantasy-cg-stats-v1';
+const THINK_MS = 450;
+
+// ---------------------------------------------------------------- persistence
 
 interface SaveData {
   state: GameState;
@@ -16,12 +22,46 @@ interface SaveData {
   log: string[];
 }
 
+export interface Settings {
+  sound: boolean;
+  music: boolean;
+  fast: boolean;
+  difficulty: AiDifficulty;
+}
+
+export interface Stats {
+  wins: number;
+  losses: number;
+  draws: number;
+  streak: number;
+  bestStreak: number;
+}
+
+const DEFAULT_SETTINGS: Settings = { sound: true, music: true, fast: false, difficulty: 'normal' };
+const DEFAULT_STATS: Stats = { wins: 0, losses: 0, draws: 0, streak: 0, bestStreak: 0 };
+
+function read<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function write(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // storage unavailable: progress just won't survive a refresh
+  }
+}
+
 /** A saved game is only trusted if every card in it still exists. */
 function loadSave(): SaveData | null {
+  const data = read<SaveData>(SAVE_KEY);
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    const data = JSON.parse(raw) as SaveData;
+    if (!data) return null;
     const s = data.state;
     const ids = [...s.board.filter((c) => c).map((c) => c!.cardId), ...s.hands.player.map((c) => c.cardId), ...s.hands.ai.map((c) => c.cardId)];
     if (!Array.isArray(s.board) || typeof data.ai?.rngState !== 'number' || ids.some((id) => !CARDS[id])) return null;
@@ -31,20 +71,17 @@ function loadSave(): SaveData | null {
   }
 }
 
-function writeSave(data: SaveData) {
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-  } catch {
-    // storage unavailable: the game just won't survive a refresh
-  }
-}
+const settings0: Settings = { ...DEFAULT_SETTINGS, ...read<Partial<Settings>>(SETTINGS_KEY) };
+const stats0: Stats = { ...DEFAULT_STATS, ...read<Partial<Stats>>(STATS_KEY) };
 
-let ai: AiPlayer = { rngState: 1234, difficulty: 'normal' };
+// ---------------------------------------------------------------- engine (module level, not React state)
+
+let ai: AiPlayer = { rngState: 1234, difficulty: settings0.difficulty };
 let engine = newEngine();
 const saved = loadSave();
 if (saved) {
   engine.restore(saved.state);
-  ai = saved.ai;
+  ai = { ...saved.ai, difficulty: settings0.difficulty };
 }
 
 function newEngine() {
@@ -53,110 +90,194 @@ function newEngine() {
   return new GameEngine({ cards: CARDS, pool: CARD_POOL, seed });
 }
 
-/** UI-only state plus the latest engine snapshot. Game rules live in the engine. */
+let scene: TableScene | null = null;
+let aiRun = 0; // a newer run (e.g. after Restart) cancels any older one
+
 interface GameStore {
   game: GameState;
-  selectedHand: number | null;
-  aiThinking: boolean;
+  screen: 'menu' | 'game';
+  /** Board card counts as currently shown (ticks up while captures animate). */
+  shownScore: Record<PlayerId, number>;
+  /** True while a move is animating or the enemy is playing. */
+  busy: boolean;
   log: string[];
-  error: string | null;
-  /** Cell of the most recent placement and the cells it flipped, for highlighting. */
-  lastPlaced: number | null;
-  lastFlipped: number[];
-  difficulty: AiDifficulty;
-  selectHand: (uid: number) => void;
-  placeAt: (cell: number) => void;
-  placeCard: (uid: number, cell: number) => void;
-  setDifficulty: (d: AiDifficulty) => void;
-  restart: () => void;
+  settings: Settings;
+  stats: Stats;
+  resultOpen: boolean;
+  howTo: boolean;
+  /** A game in progress exists that can be continued. */
+  canContinue: boolean;
+
+  attachScene: (s: TableScene) => void;
+  setShownScore: (s: Record<PlayerId, number>) => void;
+  placeCard: (uid: number, cell: number) => boolean;
+  startNew: () => void;
+  continueGame: () => void;
+  toMenu: () => void;
+  setHowTo: (open: boolean) => void;
+  closeResult: () => void;
+  updateSettings: (patch: Partial<Settings>) => void;
 }
 
+const inProgress = (g: GameState) => !g.winner && g.moves > 0;
+
 export const useGameStore = create<GameStore>((set, get) => {
-  const sync = (extra: Partial<GameStore> = {}) => {
-    set({ game: engine.getState(), error: null, ...extra });
-    writeSave({ state: engine.getState(), ai, log: get().log });
-  };
+  const persist = () => write(SAVE_KEY, { state: engine.getState(), ai, log: get().log } satisfies SaveData);
 
-  /** Runs an engine action; logs it and records which cells just changed. */
-  const act = (fn: () => GameEvent[]) => {
-    const events = fn();
+  /** Apply the engine's events to the log and save; returns nothing to animate by itself. */
+  const record = (events: GameEvent[]) => {
     const lines = describeEvents(events, CARDS, engine.getState().size);
-    const placed = events.find((e) => e.type === 'PLACED');
-    set({
-      log: [...get().log, ...lines].slice(-LOG_LIMIT),
-      lastPlaced: placed && placed.type === 'PLACED' ? placed.cell : null,
-      lastFlipped: events.flatMap((e) => (e.type === 'CAPTURED' ? [e.cell] : [])),
-    });
+    set({ game: engine.getState(), log: [...get().log, ...lines].slice(-LOG_LIMIT), canContinue: inProgress(engine.getState()) });
+    persist();
   };
 
-  const guard = (fn: () => void) => {
-    try {
-      fn();
-    } catch (e) {
-      set({ error: (e as Error).message });
-    }
+  const updateStats = (winner: PlayerId | 'draw') => {
+    const s = { ...get().stats };
+    if (winner === 'player') {
+      s.wins++;
+      s.streak++;
+      s.bestStreak = Math.max(s.bestStreak, s.streak);
+    } else if (winner === 'ai') {
+      s.losses++;
+      s.streak = 0;
+    } else s.draws++;
+    set({ stats: s });
+    write(STATS_KEY, s);
   };
 
-  let aiRun = 0; // a newer run (e.g. after Restart) cancels any older one
+  const finish = async (events: GameEvent[]) => {
+    const over = events.find((e) => e.type === 'GAME_OVER');
+    if (!over || over.type !== 'GAME_OVER') return;
+    updateStats(over.winner);
+    set({ canContinue: false });
+    await new Promise((r) => gsap.delayedCall(1.3, () => r(null)));
+    set({ resultOpen: true });
+  };
+
   async function runAiTurn() {
     const run = ++aiRun;
-    set({ aiThinking: true });
-    while (!engine.getState().winner && engine.getState().active === 'ai') {
-      await sleep(AI_DELAY_MS);
+    set({ busy: true });
+    scene?.setInput(false);
+    await scene?.banner('Enemy turn', 'ai');
+    while (run === aiRun && !engine.getState().winner && engine.getState().active === 'ai') {
+      await new Promise((r) => gsap.delayedCall(THINK_MS / 1000, () => r(null)));
       if (run !== aiRun) return;
       const action = nextAiAction(engine, 'ai', ai);
-      act(() => engine.dispatch('ai', action));
-      sync({ aiThinking: true });
+      const events = engine.dispatch('ai', action);
+      record(events);
+      await scene?.play(events, engine.getState());
+      if (run !== aiRun) return;
+      if (engine.getState().winner) {
+        set({ busy: false });
+        await finish(events);
+        return;
+      }
     }
-    set({ aiThinking: false });
+    if (run !== aiRun) return;
+    set({ busy: false });
+    await scene?.banner('Your turn', 'player');
+    scene?.setInput(true);
   }
 
-  // Refreshed during the enemy's turn: let it finish.
-  if (!engine.getState().winner && engine.getState().active === 'ai') setTimeout(() => void runAiTurn(), 0);
+  async function beginGame() {
+    const run = ++aiRun;
+    set({ busy: true, resultOpen: false });
+    scene?.setInput(false);
+    scene?.clear();
+    await scene?.deal(engine.getState());
+    if (run !== aiRun) return;
+    if (engine.getState().active === 'ai') {
+      void runAiTurn();
+    } else {
+      set({ busy: false });
+      await scene?.banner('Your turn', 'player');
+      scene?.setInput(true);
+    }
+  }
+
+  const applySettings = (s: Settings) => {
+    audio.setSound(s.sound);
+    audio.setMusic(s.music);
+    gsap.globalTimeline.timeScale(s.fast ? 1.7 : 1);
+    ai = { ...ai, difficulty: s.difficulty };
+  };
+  applySettings(settings0);
 
   return {
     game: engine.getState(),
-    selectedHand: null,
-    aiThinking: false,
+    screen: 'menu',
+    shownScore: { player: 0, ai: 0 },
+    busy: false,
     log: saved?.log ?? [],
-    error: null,
-    lastPlaced: null,
-    lastFlipped: [],
-    difficulty: ai.difficulty ?? 'normal',
+    settings: settings0,
+    stats: stats0,
+    resultOpen: false,
+    howTo: false,
+    canContinue: !!saved && inProgress(saved.state),
 
-    selectHand: (uid) => {
-      const s = get();
-      if (s.aiThinking || s.game.active !== 'player' || s.game.winner) return;
-      set({ selectedHand: s.selectedHand === uid ? null : uid, error: null });
+    attachScene: (s) => {
+      scene = s;
+      const g = engine.getState();
+      if (g.moves > 0 || g.winner) {
+        s.sync(g); // resume a saved game (finished or not) without replaying the deal
+      }
     },
 
-    placeAt: (cell) => {
-      const uid = get().selectedHand;
-      if (uid !== null) get().placeCard(uid, cell);
-    },
+    setShownScore: (score) => set({ shownScore: score }),
 
     placeCard: (uid, cell) => {
       const s = get();
-      if (s.aiThinking || s.game.active !== 'player' || s.game.winner) return;
-      guard(() => {
-        act(() => engine.place('player', uid, cell));
-        sync({ selectedHand: null });
-        if (!engine.getState().winner) void runAiTurn();
-      });
+      if (s.busy || s.screen !== 'game' || s.game.active !== 'player' || s.game.winner) return false;
+      let events: GameEvent[];
+      try {
+        events = engine.place('player', uid, cell);
+      } catch {
+        return false;
+      }
+      record(events);
+      set({ busy: true });
+      scene?.setInput(false);
+      void (async () => {
+        const run = aiRun;
+        await scene?.play(events, engine.getState());
+        if (run !== aiRun) return;
+        if (engine.getState().winner) {
+          set({ busy: false });
+          await finish(events);
+        } else {
+          void runAiTurn();
+        }
+      })();
+      return true;
     },
 
-    setDifficulty: (d) => {
-      ai = { ...ai, difficulty: d };
-      set({ difficulty: d });
-      sync();
-    },
-
-    restart: () => {
+    startNew: () => {
+      aiRun++;
       engine = newEngine();
-      aiRun++; // cancel a running AI turn
-      sync({ selectedHand: null, aiThinking: false, log: [], lastPlaced: null, lastFlipped: [] });
-      // The AI may move first in the new game.
-      if (engine.getState().active === 'ai') void runAiTurn();
+      set({ game: engine.getState(), log: [], screen: 'game', resultOpen: false, canContinue: false, shownScore: { player: 0, ai: 0 } });
+      persist();
+      audio.unlock();
+      void beginGame();
+    },
+
+    continueGame: () => {
+      audio.unlock();
+      set({ screen: 'game', resultOpen: false });
+      const g = engine.getState();
+      // Resuming mid-enemy-turn (refresh during the AI move): let it finish.
+      if (!g.winner && g.active === 'ai' && !get().busy) void runAiTurn();
+      else if (!g.winner && !get().busy) scene?.setInput(true);
+    },
+
+    toMenu: () => set({ screen: 'menu' }),
+    setHowTo: (open) => set({ howTo: open }),
+    closeResult: () => set({ resultOpen: false }),
+
+    updateSettings: (patch) => {
+      const next = { ...get().settings, ...patch };
+      set({ settings: next });
+      write(SETTINGS_KEY, next);
+      applySettings(next);
     },
   };
 });
