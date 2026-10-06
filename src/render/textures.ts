@@ -3,11 +3,11 @@ import type { CardDef, PlayerId, Rarity } from '../game/engine';
 
 /** Intrinsic card texture size. Views scale this to whatever the layout needs. */
 export const CARD_W = 400;
-export const CARD_H = 460;
+export const CARD_H = 560; // 5:7, the proportion of a real playing card
 export const CARD_ASPECT = CARD_H / CARD_W;
-/** Cards are painted in a 300x345 design space and scaled up to the texture size. */
+/** Cards are painted in a 300x420 design space and scaled up to the texture size. */
 const BASE_W = 300;
-const BASE_H = 345;
+const BASE_H = 420;
 const S = CARD_W / BASE_W;
 
 const FONT = '"Cinzel", "Georgia", serif';
