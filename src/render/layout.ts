@@ -50,8 +50,8 @@ export function computeLayout(w: number, h: number, size: number): Layout {
   const enemyZone = Math.max(40, Math.min(58, h * 0.07));
   const availH = h - TOP_INSET - enemyZone - handZone - margin;
 
-  const gapRatio = 0.06;
-  const padRatio = 0.1;
+  const gapRatio = 0.045;
+  const padRatio = 0.07;
   // board width = size*cellW + (size-1)*gap + 2*pad
   const units = size + (size - 1) * gapRatio + 2 * padRatio;
   const cellW = Math.max(40, Math.floor(Math.min(availW / units, availH / (units * CARD_ASPECT))));
