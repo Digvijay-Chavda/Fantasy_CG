@@ -9,9 +9,9 @@ export function Menu() {
   return (
     <div className="screen menu">
       <div className="menu-card">
-        <p className="eyebrow">Dark-fantasy card duel</p>
+        <p className="eyebrow">Dark desire · card duel</p>
         <h1 className="logo">Fantasy <span>CG</span></h1>
-        <p className="tagline">Place cards, beat the numbers on their edges and claim the board.</p>
+        <p className="tagline">Tempt the board. Place your cards, outplay the numbers on their edges and claim every cell.</p>
 
         <div className="menu-actions">
           {s.canContinue && (

@@ -27,7 +27,7 @@ export interface Layout {
 }
 
 /** Space reserved for the React HUD along the top of the canvas. */
-const TOP_INSET = 64;
+const TOP_INSET = 60;
 /**
  * Fraction of a card's width each neighbour advances. Near 1 keeps all four numbers readable; narrow
  * (phone) screens accept heavy overlap because there is no room, and tapping lifts a card anyway.
@@ -40,18 +40,18 @@ export function computeLayout(w: number, h: number, size: number): Layout {
   const availW = w - margin * 2;
 
   // The player's cards are the star: as wide as the screen and a sensible share of its height allow.
-  const maxHandH = Math.min(h * 0.25, 280);
+  const maxHandH = Math.min(h * 0.23, 260);
   const handCardW = Math.min(maxHandH / CARD_ASPECT, availW / (1 + minStep(w) * (handCount - 1)));
   const handCardH = handCardW * CARD_ASPECT;
   // the fan dips towards the edges (arc + tilt), so reserve that space or the outer cards get clipped
   const arcMax = Math.pow((handCount - 1) / 2, 2) * (handCardW * 0.006);
   const handZone = Math.round(handCardH * 1.08 + arcMax * 2 + 12);
 
-  const enemyZone = Math.max(40, Math.min(58, h * 0.07));
-  const availH = h - TOP_INSET - enemyZone - handZone - margin;
+  const enemyZone = Math.max(36, Math.min(50, h * 0.06));
+  const availH = h - TOP_INSET - enemyZone - handZone - margin * 0.6;
 
-  const gapRatio = 0.045;
-  const padRatio = 0.07;
+  const gapRatio = 0.035;
+  const padRatio = 0.05;
   // board width = size*cellW + (size-1)*gap + 2*pad
   const units = size + (size - 1) * gapRatio + 2 * padRatio;
   const cellW = Math.max(40, Math.floor(Math.min(availW / units, availH / (units * CARD_ASPECT))));

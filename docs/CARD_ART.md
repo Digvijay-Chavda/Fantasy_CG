@@ -1,34 +1,34 @@
 # Card art specification
 
 ## Size
-- **Canvas: 1000 x 1400 px, portrait, 5:7** (the proportion of a real poker/tarot card, 1 : 1.4).
-- Acceptable minimum: 800 x 1120 px. Any other size works only if it is exactly 5:7; anything else is cropped to fill the card.
-- Format: **PNG** (JPG also fine; keep the file name ending in `.png` or tell me to change the loader).
-- Content: **full-bleed illustration, no text, no frame, no numbers, no border.** The game draws all of those.
+- **Canvas: 1056 x 1408 px, portrait, 3:4** (this is the "3:4, 1056 x 1408" setting in the image generator).
+- Any other size works only if it is exactly 3:4 (for example 528 x 704 or 792 x 1056); anything else is cropped to fill the card.
+- Format: **PNG** (keep the file name ending in `.png`).
+- Content: **full-bleed illustration, no text, no frame, no numbers, no border, square corners.** The game draws all of those.
 
-In the game a card is drawn about 140 px wide on a laptop (about 280 px on a retina screen), so 1000 px wide is plenty of headroom.
+The card is drawn about 135 px wide on a laptop (about 270 px on a retina screen), so 1056 px wide is plenty of headroom.
 
 ## What the game draws on top of your art
-See `docs/card-art-template.png` (1000 x 1400) for the exact zones. In 1000 x 1400 px terms:
+See `docs/card-art-template.png` (1056 x 1408) for the exact zones. In 1056 x 1408 px terms:
 
 | Overlay | Area | Notes |
 |---|---|---|
-| Rounded corners | radius ~67 px | corners are cut off |
-| Colour frame | ~17 px at the edge | blue = yours, red = enemy's |
-| Top number | circle, centre (500, 100), r 77 | keep calm detail here |
-| Bottom number | circle, centre (500, 1307), r 77 | |
-| Left / right numbers | circles, centre (93, 700) / (907, 700), r 77 | |
-| Name plate | text near y 1213, plus a dark fade over the bottom 34 % (y 924-1400) | art there is darkened to ~88 % at the very bottom |
+| Corners | **square**, nothing is cut off | |
+| Colour frame | ~18 px at the edge (and a thin rarity line 28 px in) | blue = yours, red = enemy's |
+| Top number | circle, centre (528, 106), r 81 | keep calm detail here |
+| Bottom number | circle, centre (528, 1309), r 81 | |
+| Left / right numbers | circles, centre (99, 704) / (957, 704), r 81 | |
+| Name plate | text near y 1211, plus a dark fade over the bottom 34 % (y 929-1408) | art there is darkened to ~88 % at the very bottom |
 | Gloss + side tint | whole card, subtle | a soft highlight top-left and a coloured tint toward the edges |
 
 ## Composition
-- **Safe area for the face / focal subject: x 140-860, y 210-1120** (dashed green box in the template).
-- Put the main focal point at about **45 % of the height** (y ~ 630).
-- Leave the four number zones and the bottom 18 % (y > 1150) free of important detail (hands, weapons, faces).
-- Darker, moodier art reads best: the frame, numbers and gloss are light, and the table is dark wine/black.
+- **Safe area for the face / focal subject: x 148-908, y 211-1126** (dashed green box in the template).
+- Put the main focal point at about **45 % of the height** (y ~ 634).
+- Leave the four number zones and the bottom 18 % (y > 1155) free of important detail (hands, weapons, faces).
+- Dark, moody, high-contrast art reads best: the frame and numbers are light, and the table is black wine and crimson.
 
 ## Rarity (drawn as a thin inner line, not part of your art)
-Common = silver-rose, Rare = pink, Epic = violet, Legendary = gold. Higher rarities can have richer, more detailed art.
+Common = pearl, Rare = rose, Epic = violet, Legendary = gold. Higher rarities can have richer, more detailed art.
 
 ## File naming
 Save each image as `public/cards/<card id>.png`. It is picked up automatically (no code change); refresh the page.

@@ -2,27 +2,29 @@ import { Texture } from 'pixi.js';
 import type { CardDef, PlayerId, Rarity } from '../game/engine';
 
 /** Intrinsic card texture size. Views scale this to whatever the layout needs. */
-export const CARD_W = 400;
-export const CARD_H = 560; // 5:7, the proportion of a real playing card
+// 3/8 of the 1040 x 1408 artwork size, so the proportions match the art exactly (65:88)
+// 3/8 of the 1056 x 1408 artwork, so the card matches the art exactly (3:4)
+export const CARD_W = 396;
+export const CARD_H = 528;
 export const CARD_ASPECT = CARD_H / CARD_W;
-/** Cards are painted in a 300x420 design space and scaled up to the texture size. */
+/** Cards are painted in a 300 x 400 design space and scaled up to the texture size. */
 const BASE_W = 300;
-const BASE_H = 420;
+const BASE_H = (CARD_H / CARD_W) * BASE_W;
 const S = CARD_W / BASE_W;
 
 const FONT = '"Cinzel", "Georgia", serif';
 const EMOJI_FONT = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
 
 export const OWNER_COLORS: Record<PlayerId, { hi: string; lo: string; glow: number; edge: string }> = {
-  player: { hi: '#6fb0ff', lo: '#1d4fc4', glow: 0x4f9bff, edge: '79,155,255' },
-  ai: { hi: '#ff7d8b', lo: '#b3182f', glow: 0xff4d62, edge: '255,77,98' },
+  player: { hi: '#6aa8ff', lo: '#1b3fa8', glow: 0x4f9bff, edge: '79,155,255' },
+  ai: { hi: '#ff5a78', lo: '#9b0f2e', glow: 0xff3b5c, edge: '255,59,92' },
 };
 
 const RARITY: Record<Rarity, { hi: string; lo: string; tint: string; glow: number }> = {
-  COMMON: { hi: '#e7dbe6', lo: '#8a7488', tint: '#4a2a44', glow: 0xe7dbe6 },
-  RARE: { hi: '#ffc2e0', lo: '#c2457f', tint: '#6b1f4d', glow: 0xff7ab8 },
-  EPIC: { hi: '#e6c4ff', lo: '#8b3fd6', tint: '#4a1d78', glow: 0xc084fc },
-  LEGENDARY: { hi: '#fff0b0', lo: '#c98a1a', tint: '#7a3b12', glow: 0xffd34e },
+  COMMON: { hi: '#f0dfe3', lo: '#9a7f8a', tint: '#3a1424', glow: 0xf0dfe3 },
+  RARE: { hi: '#ffb3cf', lo: '#d63a7a', tint: '#5c1238', glow: 0xff7ab8 },
+  EPIC: { hi: '#e8b8ff', lo: '#9333ea', tint: '#3f1257', glow: 0xc084fc },
+  LEGENDARY: { hi: '#ffe7a8', lo: '#d4961f', tint: '#6b2a10', glow: 0xffd34e },
 };
 export const rarityGlow = (r: Rarity) => RARITY[r].glow;
 
@@ -35,7 +37,10 @@ function canvas(w: number, h: number): [HTMLCanvasElement, Ctx] {
   return [c, c.getContext('2d')!];
 }
 
+/** The design uses square corners; the radius argument is kept so a rounded look is a one-line change. */
+const CORNER_SCALE = 0;
 function rr(g: Ctx, x: number, y: number, w: number, h: number, r: number) {
+  r *= CORNER_SCALE;
   g.beginPath();
   g.moveTo(x + r, y);
   g.arcTo(x + w, y, x + w, y + h, r);
@@ -124,8 +129,8 @@ function paintFace(def: CardDef, owner: PlayerId): HTMLCanvasElement {
   // artwork (full bleed). Placeholder: rich dark backdrop + large glyph.
   const bg = g.createRadialGradient(W / 2, H * 0.42, 10, W / 2, H * 0.5, H * 0.75);
   bg.addColorStop(0, rar.tint);
-  bg.addColorStop(0.6, '#1a0a1c');
-  bg.addColorStop(1, '#07030b');
+  bg.addColorStop(0.6, '#16050c');
+  bg.addColorStop(1, '#050206');
   g.fillStyle = bg;
   g.fillRect(0, 0, W, H);
   const img = requestArt(def.id);
@@ -199,9 +204,9 @@ function paintBack(): HTMLCanvasElement {
   g.save();
   rr(g, 2, 2, W - 4, H - 4, 20);
   g.clip();
-  g.fillStyle = vGradient(g, 0, H, [[0, '#4a1636'], [1, '#14060f']]);
+  g.fillStyle = vGradient(g, 0, H, [[0, '#5a0f2a'], [1, '#14040a']]);
   g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(255,215,140,.2)';
+  g.strokeStyle = 'rgba(233,184,114,.22)';
   g.lineWidth = 1.5;
   for (let i = -H; i < W + H; i += 20) {
     g.beginPath(); g.moveTo(i, 0); g.lineTo(i + H, H); g.stroke();
@@ -210,24 +215,24 @@ function paintBack(): HTMLCanvasElement {
   g.restore();
   rr(g, 2.5, 2.5, W - 5, H - 5, 20);
   g.lineWidth = 5;
-  g.strokeStyle = vGradient(g, 0, H, [[0, '#ffe08a'], [0.5, '#a8741a'], [1, '#ffe08a']]);
+  g.strokeStyle = vGradient(g, 0, H, [[0, '#f3c98a'], [0.5, '#8a5a1f'], [1, '#f3c98a']]);
   g.stroke();
   rr(g, 12, 12, W - 24, H - 24, 14);
   g.lineWidth = 1.5;
-  g.strokeStyle = 'rgba(255,224,138,.5)';
+  g.strokeStyle = 'rgba(233,184,114,.5)';
   g.stroke();
   g.beginPath();
   g.arc(W / 2, H / 2, 58, 0, Math.PI * 2);
   g.fillStyle = 'rgba(14,5,12,.85)';
   g.fill();
   g.lineWidth = 3;
-  g.strokeStyle = '#ffe08a';
+  g.strokeStyle = '#e9b872';
   g.stroke();
-  g.font = `60px ${EMOJI_FONT}`;
-  g.fillStyle = '#ffe08a';
+  g.font = `60px ${FONT}`;
+  g.fillStyle = '#e9b872';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText('✦', W / 2, H / 2 + 4);
+  g.fillText('♥', W / 2, H / 2 + 4);
   return c;
 }
 
@@ -317,7 +322,7 @@ export function vignetteTexture(): Texture {
     const [c, g] = canvas(512, 512);
     const grad = g.createRadialGradient(256, 256, 140, 256, 256, 380);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(4,2,12,.8)');
+    grad.addColorStop(1, 'rgba(6,1,4,.86)');
     g.fillStyle = grad;
     g.fillRect(0, 0, 512, 512);
     vignetteTex = Texture.from(c);
@@ -330,13 +335,13 @@ export function vignetteTexture(): Texture {
 export function paintTable(w: number, h: number): HTMLCanvasElement {
   const [c, g] = canvas(Math.max(2, Math.floor(w)), Math.max(2, Math.floor(h)));
   const bg = g.createRadialGradient(w / 2, h * 0.45, 20, w / 2, h * 0.45, Math.max(w, h) * 0.75);
-  bg.addColorStop(0, '#34142e');
-  bg.addColorStop(0.55, '#170a1f');
-  bg.addColorStop(1, '#06030a');
+  bg.addColorStop(0, '#3d0b1e');
+  bg.addColorStop(0.55, '#1a050d');
+  bg.addColorStop(1, '#050206');
   g.fillStyle = bg;
   g.fillRect(0, 0, w, h);
   // faint rune circles
-  g.strokeStyle = 'rgba(190,150,255,.07)';
+  g.strokeStyle = 'rgba(255,110,150,.07)';
   g.lineWidth = 2;
   for (const r of [0.28, 0.4, 0.55]) {
     g.beginPath();
@@ -366,24 +371,24 @@ export interface BoardPaint {
 export function paintBoard(p: BoardPaint): HTMLCanvasElement {
   const [c, g] = canvas(Math.ceil(p.width), Math.ceil(p.height));
   rr(g, 2, 2, p.width - 4, p.height - 4, 22);
-  g.fillStyle = vGradient(g, 0, p.height, [[0, '#2c1530'], [1, '#150a1c']]);
+  g.fillStyle = vGradient(g, 0, p.height, [[0, '#2a0a18'], [1, '#12040a']]);
   g.fill();
   g.lineWidth = 4;
-  g.strokeStyle = vGradient(g, 0, p.height, [[0, '#ffe08a'], [0.5, '#9a6b1c'], [1, '#ffe08a']]);
+  g.strokeStyle = vGradient(g, 0, p.height, [[0, '#f3c98a'], [0.5, '#8a5a1f'], [1, '#f3c98a']]);
   g.stroke();
   rr(g, 10, 10, p.width - 20, p.height - 20, 16);
   g.lineWidth = 1.5;
-  g.strokeStyle = 'rgba(255,224,138,.35)';
+  g.strokeStyle = 'rgba(233,184,114,.35)';
   g.stroke();
   for (let row = 0; row < p.size; row++) {
     for (let col = 0; col < p.size; col++) {
       const x = p.pad + col * (p.cellW + p.gap);
       const y = p.pad + row * (p.cellH + p.gap);
       rr(g, x, y, p.cellW, p.cellH, 12);
-      g.fillStyle = 'rgba(8,5,18,.7)';
+      g.fillStyle = 'rgba(6,2,6,.78)';
       g.fill();
       g.lineWidth = 2;
-      g.strokeStyle = 'rgba(180,150,240,.28)';
+      g.strokeStyle = 'rgba(255,100,140,.3)';
       g.stroke();
       // rune diamond
       const cx = x + p.cellW / 2;
@@ -395,7 +400,7 @@ export function paintBoard(p: BoardPaint): HTMLCanvasElement {
       g.lineTo(cx, cy + r);
       g.lineTo(cx - r, cy);
       g.closePath();
-      g.strokeStyle = 'rgba(190,150,255,.2)';
+      g.strokeStyle = 'rgba(255,110,150,.24)';
       g.stroke();
     }
   }
