@@ -27,7 +27,7 @@ npm run playthrough  # plays a whole game by clicking and tests refresh-resume
 
 ## Adding real card art
 
-Everything is placeholder except the artwork slot. Drop **1000 x 1400 px (5:7) portrait PNGs** into `public/cards/` named after the card id (for example `public/cards/phoenix.png`). They are picked up automatically and fill the whole card face. Cards without a file keep their placeholder glyph. See [docs/CARD_ART.md](docs/CARD_ART.md) and [docs/card-art-template.png](docs/card-art-template.png) for the safe areas, what the game overlays, and the full card list.
+Everything is placeholder except the artwork slot. Drop **1056 x 1408 px (3:4) portrait PNGs** into `public/cards/` named after the card id (for example `public/cards/phoenix.png`). They are picked up automatically and fill the whole card face. Cards without a file keep their placeholder glyph. See [docs/CARD_ART.md](docs/CARD_ART.md) and [docs/card-art-template.png](docs/card-art-template.png) for the safe areas, what the game overlays, and the full card list.
 
 ## Structure
 

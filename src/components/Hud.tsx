@@ -5,7 +5,7 @@ import { useGameStore } from '../store/gameStore';
 function Score({ side, value, label }: { side: 'player' | 'ai'; value: number; label: string }) {
   return (
     <div className={`score ${side}`}>
-      <span className="avatar">{side === 'player' ? '🧙' : '👁️'}</span>
+      <span className="avatar">{side === 'player' ? '🌹' : '😈'}</span>
       <span className="who">{label}</span>
       {/* key remounts the number so it pops each time it changes */}
       <b key={value} className="num">{value}</b>

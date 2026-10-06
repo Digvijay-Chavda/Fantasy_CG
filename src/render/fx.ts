@@ -81,7 +81,7 @@ export class Fx {
     this.emberClock += dt;
     while (this.emberClock > 0.18) {
       this.emberClock -= 0.18;
-      const warm = [0xffb347, 0xff7a3d, 0xc084fc][Math.floor(Math.random() * 3)]!;
+      const warm = [0xff4d7a, 0xc1122f, 0xe9b872][Math.floor(Math.random() * 3)]!;
       this.spawn(Math.random() * w, h + 10, warm, {
         vx: (Math.random() - 0.5) * 24, vy: -(20 + Math.random() * 40), max: 6 + Math.random() * 5,
         size0: 0.12 + Math.random() * 0.14, size1: 0.05, fade: 'bell', alpha: 0.7,

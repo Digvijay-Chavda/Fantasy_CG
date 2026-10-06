@@ -492,7 +492,7 @@ export class TableScene {
     const L = this.layout;
     if (winner === 'player') {
       audio.play('win');
-      this.fx.confetti(L.w, L.h, [0xffd34e, 0x5aa2ff, 0xc084fc, 0x6ee7a8, 0xff6b7a]);
+      this.fx.confetti(L.w, L.h, [0xffd34e, 0x5aa2ff, 0xff7ab8, 0xe9b872, 0xff3b5c]);
       for (let i = 0; i < 5; i++) gsap.delayedCall(i * 0.25, () => this.fx.burst(L.w * (0.2 + Math.random() * 0.6), L.h * (0.25 + Math.random() * 0.3), 0xffd34e, 24, 340, 0.6, 1, 260));
     } else if (winner === 'ai') {
       audio.play('lose');
@@ -509,10 +509,10 @@ export class TableScene {
   /** Slide a banner across the screen ("YOUR TURN"). */
   async banner(text: string, tone: PlayerId | 'neutral' = 'neutral') {
     const L = this.layout;
-    const color = tone === 'player' ? 0x1f4fb8 : tone === 'ai' ? 0xa3192c : 0x4a3480;
+    const color = tone === 'player' ? 0x1f4fb8 : tone === 'ai' ? 0xa3192c : 0x5a0f2a;
     const c = new Container();
     const band = new Graphics().rect(0, -30, L.w, 60).fill({ color, alpha: 0.82 });
-    const edge = new Graphics().rect(0, -30, L.w, 2).fill({ color: 0xffe08a, alpha: 0.8 }).rect(0, 28, L.w, 2).fill({ color: 0xffe08a, alpha: 0.8 });
+    const edge = new Graphics().rect(0, -30, L.w, 2).fill({ color: 0xe9b872, alpha: 0.85 }).rect(0, 28, L.w, 2).fill({ color: 0xe9b872, alpha: 0.85 });
     const label = new Text({
       text: text.toUpperCase(),
       style: { fontFamily: '"Cinzel", Georgia, serif', fontSize: Math.min(34, L.w * 0.08), fontWeight: '800', fill: '#ffffff', letterSpacing: 6, stroke: { color: '#000000', width: 4 } },
@@ -700,7 +700,7 @@ export class TableScene {
     for (let i = 0; i < L.size * L.size; i++) {
       if (this.shown.board[i]) continue;
       const c = L.cell(i);
-      this.cellHi.roundRect(c.x - L.cellW / 2, c.y - L.cellH / 2, L.cellW, L.cellH, 12).stroke({ width: 3, color: 0x6ee7a8, alpha: 0.95 });
+      this.cellHi.rect(c.x - L.cellW / 2, c.y - L.cellH / 2, L.cellW, L.cellH).stroke({ width: 3, color: 0xff8fb1, alpha: 0.95 });
     }
     this.hiTween = gsap.to(this.cellHi, { alpha: 0.35, duration: 0.6, yoyo: true, repeat: -1, ease: 'sine.inOut' });
   }
