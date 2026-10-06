@@ -50,6 +50,9 @@ export interface Unit {
   row: Row;
   slot: number;
   ready: boolean;
+  /** The hand card this unit came from, so a recall can restore it. */
+  cardUid: number;
+  deployedTurn: number;
 }
 
 export interface PlayerState {
@@ -77,6 +80,7 @@ export type AttackTarget = { kind: 'HERO' } | { kind: 'UNIT'; uid: number };
 export type Action =
   | { type: 'PLAY_CARD'; uid: number; row?: Row; slot?: number }
   | { type: 'ATTACK'; attackerUid: number; target: AttackTarget }
+  | { type: 'RECALL_UNIT'; unitUid: number }
   | { type: 'END_TURN' };
 
 export type GameEvent =
@@ -88,6 +92,7 @@ export type GameEvent =
   | { type: 'DAMAGE'; target: AttackTarget; owner: PlayerId; amount: number }
   | { type: 'HEAL'; target: AttackTarget; owner: PlayerId; amount: number }
   | { type: 'BUFF'; unitUid: number; power: number }
+  | { type: 'UNIT_RECALLED'; player: PlayerId; cardId: string }
   | { type: 'UNIT_DIED'; unitUid: number; cardId: string; owner: PlayerId }
   | { type: 'GAME_OVER'; winner: PlayerId };
 

@@ -67,6 +67,8 @@ tests/engine.test.ts
 2. AI wasted Essence on spells (Arcane Insight) instead of deploying: added +3 score bonus for characters in `easy.ts`.
 3. Added descriptive game log (`log.ts`, store `log`, log panel in Battle).
 4. Added drag-and-drop + fixed-size hand grid with placeholders; new store action `deployCard(uid, row, slot)`.
+5. Added recall: drag a unit deployed this turn (no on-play effect) back onto the hand to return it and refund Essence (`RECALL_UNIT` action, `canRecall`).
+6. Fixed useEffect in Battle.tsx to use a block body.
 
 ## Known gaps / next steps
 - AI scoring is simplistic (no board evaluation; slot/row choice = first legal). Spells like Rally/Insight are scored by cost only.

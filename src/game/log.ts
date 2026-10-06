@@ -42,6 +42,9 @@ export function describeEvents(events: GameEvent[], before: GameState, cards: Ca
       case 'CARD_BURNED':
         lines.push(`${who(e.player)} had a full hand — a card was burned`);
         break;
+      case 'UNIT_RECALLED':
+        lines.push(`${who(e.player)} returned ${cardName(e.cardId)} to hand`);
+        break;
       case 'ATTACK': {
         const a = unit(e.attackerUid);
         const attacker = a ? `${whose(a.owner)} ${cardName(a.cardId)}` : 'A unit';

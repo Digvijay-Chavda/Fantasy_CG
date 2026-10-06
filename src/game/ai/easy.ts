@@ -13,7 +13,7 @@ export interface AiContext {
 function scoreAction(ctx: AiContext, a: Action): number {
   const { view, cards, me } = ctx;
   const enemy = opponentOf(me);
-  if (a.type === 'END_TURN') return 0;
+  if (a.type === 'END_TURN' || a.type === 'RECALL_UNIT') return 0; // the AI never recalls
 
   if (a.type === 'PLAY_CARD') {
     const inst = view.players[me].hand.find((c) => c.uid === a.uid);
