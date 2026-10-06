@@ -20,6 +20,7 @@ function scoreAction(ctx: AiContext, a: Action): number {
     const d = inst && cards[inst.cardId];
     if (!d) return -1;
     let s = 2 + d.cost; // spend Essence, favour bigger plays
+    if (d.type === 'CHARACTER') s += 3; // build a board before casting spells
     if (d.type === 'SPELL' && !view.units.some((u) => u.owner === enemy)) s -= 1;
     if (a.row === 'FRONT' && d.ranged) s -= 1; // keep ranged units safe in back
     return s;
