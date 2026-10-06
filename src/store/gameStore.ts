@@ -175,8 +175,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     }
     if (run !== aiRun) return;
     set({ busy: false });
-    await scene?.banner('Your turn', 'player');
-    scene?.setInput(true);
+    scene?.setInput(true); // don't make the player wait for the banner
+    void scene?.banner('Your turn', 'player');
   }
 
   async function beginGame() {
@@ -190,8 +190,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       void runAiTurn();
     } else {
       set({ busy: false });
-      await scene?.banner('Your turn', 'player');
       scene?.setInput(true);
+      void scene?.banner('Your turn', 'player');
     }
   }
 

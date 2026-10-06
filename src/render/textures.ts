@@ -2,23 +2,27 @@ import { Texture } from 'pixi.js';
 import type { CardDef, PlayerId, Rarity } from '../game/engine';
 
 /** Intrinsic card texture size. Views scale this to whatever the layout needs. */
-export const CARD_W = 300;
-export const CARD_H = 345;
+export const CARD_W = 400;
+export const CARD_H = 460;
 export const CARD_ASPECT = CARD_H / CARD_W;
+/** Cards are painted in a 300x345 design space and scaled up to the texture size. */
+const BASE_W = 300;
+const BASE_H = 345;
+const S = CARD_W / BASE_W;
 
 const FONT = '"Cinzel", "Georgia", serif';
 const EMOJI_FONT = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
 
-export const OWNER_COLORS: Record<PlayerId, { hi: string; lo: string; glow: number }> = {
-  player: { hi: '#5aa2ff', lo: '#16327a', glow: 0x4f9bff },
-  ai: { hi: '#ff6b7a', lo: '#6e1222', glow: 0xff4d62 },
+export const OWNER_COLORS: Record<PlayerId, { hi: string; lo: string; glow: number; edge: string }> = {
+  player: { hi: '#6fb0ff', lo: '#1d4fc4', glow: 0x4f9bff, edge: '79,155,255' },
+  ai: { hi: '#ff7d8b', lo: '#b3182f', glow: 0xff4d62, edge: '255,77,98' },
 };
 
 const RARITY: Record<Rarity, { hi: string; lo: string; tint: string; glow: number }> = {
-  COMMON: { hi: '#e2e8f0', lo: '#64748b', tint: '#3b4658', glow: 0xcbd5e1 },
-  RARE: { hi: '#a5e8ff', lo: '#0b78b8', tint: '#14506e', glow: 0x5fd1ff },
-  EPIC: { hi: '#f0c4ff', lo: '#7e22ce', tint: '#4a1d70', glow: 0xc084fc },
-  LEGENDARY: { hi: '#fff0a8', lo: '#b45309', tint: '#7a4a10', glow: 0xffd34e },
+  COMMON: { hi: '#e7dbe6', lo: '#8a7488', tint: '#4a2a44', glow: 0xe7dbe6 },
+  RARE: { hi: '#ffc2e0', lo: '#c2457f', tint: '#6b1f4d', glow: 0xff7ab8 },
+  EPIC: { hi: '#e6c4ff', lo: '#8b3fd6', tint: '#4a1d78', glow: 0xc084fc },
+  LEGENDARY: { hi: '#fff0b0', lo: '#c98a1a', tint: '#7a3b12', glow: 0xffd34e },
 };
 export const rarityGlow = (r: Rarity) => RARITY[r].glow;
 
@@ -81,138 +85,145 @@ function requestArt(cardId: string): HTMLImageElement | null {
 
 // ---------------------------------------------------------------- card faces
 
-function badge(g: Ctx, cx: number, cy: number, n: number, rarity: Rarity) {
+/** Number badge: compact dark pill with a ring in the owner's colour, sitting on top of the art. */
+function badge(g: Ctx, cx: number, cy: number, n: number, owner: PlayerId) {
   g.beginPath();
-  g.arc(cx, cy, 26, 0, Math.PI * 2);
-  g.fillStyle = 'rgba(8,6,20,.7)';
+  g.arc(cx, cy, 23, 0, Math.PI * 2);
+  g.fillStyle = 'rgba(10,5,14,.72)';
   g.fill();
   g.lineWidth = 3;
-  g.strokeStyle = RARITY[rarity].hi;
+  g.strokeStyle = OWNER_COLORS[owner].hi;
   g.stroke();
-  g.font = `800 36px ${FONT}`;
+  g.font = `800 31px ${FONT}`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.lineWidth = 6;
+  g.lineWidth = 5;
   g.strokeStyle = 'rgba(0,0,0,.85)';
   g.strokeText(String(n), cx, cy + 2);
   g.fillStyle = n >= 10 ? '#ffe08a' : '#ffffff';
   g.fillText(String(n), cx, cy + 2);
 }
 
+/**
+ * Art-first card: the illustration fills the whole face, framed by a thin border in the owner's colour
+ * (blue = yours, red = enemy's). Only compact number badges and a name plate sit on top of the art.
+ */
 function paintFace(def: CardDef, owner: PlayerId): HTMLCanvasElement {
   const [c, g] = canvas(CARD_W, CARD_H);
-  const W = CARD_W;
-  const H = CARD_H;
+  g.scale(S, S);
+  const W = BASE_W;
+  const H = BASE_H;
   const own = OWNER_COLORS[owner];
   const rar = RARITY[def.rarity];
 
-  // body
-  rr(g, 6, 6, W - 12, H - 12, 26);
-  g.fillStyle = vGradient(g, 0, H, [[0, own.hi], [1, own.lo]]);
-  g.fill();
+  // everything inside the rounded card shape
   g.save();
+  rr(g, 2, 2, W - 4, H - 4, 20);
   g.clip();
-  g.globalAlpha = 0.08;
-  g.strokeStyle = '#fff';
-  g.lineWidth = 2;
-  for (let i = -H; i < W; i += 14) {
-    g.beginPath();
-    g.moveTo(i, H);
-    g.lineTo(i + H, 0);
-    g.stroke();
-  }
-  g.restore();
 
-  // art window
-  const wx = 64;
-  const wy = 66;
-  const ww = W - wx * 2;
-  const wh = H - wy * 2;
-  g.save();
-  rr(g, wx, wy, ww, wh, 16);
-  g.clip();
-  const bg = g.createRadialGradient(W / 2, H / 2 - 20, 10, W / 2, H / 2, wh * 0.7);
+  // artwork (full bleed). Placeholder: rich dark backdrop + large glyph.
+  const bg = g.createRadialGradient(W / 2, H * 0.42, 10, W / 2, H * 0.5, H * 0.75);
   bg.addColorStop(0, rar.tint);
-  bg.addColorStop(1, '#0b0714');
+  bg.addColorStop(0.6, '#1a0a1c');
+  bg.addColorStop(1, '#07030b');
   g.fillStyle = bg;
-  g.fillRect(wx, wy, ww, wh);
+  g.fillRect(0, 0, W, H);
   const img = requestArt(def.id);
   if (img) {
-    const s = Math.max(ww / img.width, wh / img.height);
-    g.drawImage(img, wx + (ww - img.width * s) / 2, wy + (wh - img.height * s) / 2, img.width * s, img.height * s);
+    const k = Math.max(W / img.width, H / img.height);
+    g.drawImage(img, (W - img.width * k) / 2, (H - img.height * k) / 2, img.width * k, img.height * k);
   } else {
-    g.font = `110px ${EMOJI_FONT}`;
+    g.font = `150px ${EMOJI_FONT}`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.shadowColor = 'rgba(0,0,0,.6)';
-    g.shadowBlur = 14;
-    g.fillText(def.glyph ?? '✦', W / 2, H / 2 - 4);
+    g.shadowColor = 'rgba(0,0,0,.65)';
+    g.shadowBlur = 20;
+    g.fillText(def.glyph ?? '✦', W / 2, H * 0.44);
     g.shadowBlur = 0;
   }
-  const fade = vGradient(g, wy + wh * 0.55, wy + wh, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,.7)']]);
-  g.fillStyle = fade;
-  g.fillRect(wx, wy, ww, wh);
-  g.font = `700 21px ${FONT}`;
+
+  // soft gloss across the top, then a dark fade at the bottom for the name plate
+  const gloss = g.createLinearGradient(0, 0, W, H * 0.6);
+  gloss.addColorStop(0, 'rgba(255,255,255,.16)');
+  gloss.addColorStop(0.45, 'rgba(255,255,255,0)');
+  g.fillStyle = gloss;
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = vGradient(g, H * 0.66, H, [[0, 'rgba(8,3,12,0)'], [1, 'rgba(8,3,12,.88)']]);
+  g.fillRect(0, H * 0.66, W, H * 0.34);
+  // owner colour bleeding in from the edges (keeps the middle of the art clean)
+  const edge = g.createRadialGradient(W / 2, H / 2, H * 0.34, W / 2, H / 2, H * 0.72);
+  edge.addColorStop(0, `rgba(${own.edge},0)`);
+  edge.addColorStop(1, `rgba(${own.edge},.42)`);
+  g.fillStyle = edge;
+  g.fillRect(0, 0, W, H);
+
+  // name plate
+  g.font = `700 19px ${FONT}`;
   g.fillStyle = '#fff';
   g.textAlign = 'center';
   g.textBaseline = 'alphabetic';
-  g.shadowColor = 'rgba(0,0,0,.9)';
-  g.shadowBlur = 6;
-  g.fillText(def.name.toUpperCase(), W / 2, wy + wh - 14, ww - 12);
+  g.shadowColor = 'rgba(0,0,0,.95)';
+  g.shadowBlur = 7;
+  g.fillText(def.name.toUpperCase(), W / 2, H - 56, W - 110);
   g.shadowBlur = 0;
+  g.fillStyle = vGradient(g, 0, 1, [[0, rar.hi], [1, rar.lo]]);
+  g.fillRect(W / 2 - 34, H - 49, 68, 2);
   g.restore();
-  rr(g, wx, wy, ww, wh, 16);
-  g.lineWidth = 3;
-  g.strokeStyle = 'rgba(0,0,0,.55)';
-  g.stroke();
 
-  // border by rarity
-  rr(g, 6, 6, W - 12, H - 12, 26);
-  g.lineWidth = 9;
+  // thin frame: owner colour outside, rarity hairline inside
+  rr(g, 2.5, 2.5, W - 5, H - 5, 20);
+  g.lineWidth = 5;
+  g.strokeStyle = vGradient(g, 0, H, [[0, own.hi], [1, own.lo]]);
+  g.stroke();
+  rr(g, 8, 8, W - 16, H - 16, 15);
+  g.lineWidth = 1.5;
   g.strokeStyle = vGradient(g, 0, H, [[0, rar.hi], [0.5, rar.lo], [1, rar.hi]]);
+  g.globalAlpha = 0.75;
   g.stroke();
-  rr(g, 16, 16, W - 32, H - 32, 20);
-  g.lineWidth = 2;
-  g.strokeStyle = 'rgba(255,255,255,.28)';
-  g.stroke();
+  g.globalAlpha = 1;
 
   // numbers
   const { top, right, bottom, left } = def.ranks;
-  badge(g, W / 2, 36, top, def.rarity);
-  badge(g, W / 2, H - 36, bottom, def.rarity);
-  badge(g, 36, H / 2, left, def.rarity);
-  badge(g, W - 36, H / 2, right, def.rarity);
+  badge(g, W / 2, 30, top, owner);
+  badge(g, W / 2, H - 28, bottom, owner);
+  badge(g, 28, H / 2, left, owner);
+  badge(g, W - 28, H / 2, right, owner);
   return c;
 }
 
 function paintBack(): HTMLCanvasElement {
   const [c, g] = canvas(CARD_W, CARD_H);
-  const W = CARD_W;
-  const H = CARD_H;
-  rr(g, 6, 6, W - 12, H - 12, 26);
-  g.fillStyle = vGradient(g, 0, H, [[0, '#4a3480'], [1, '#1d1238']]);
-  g.fill();
+  g.scale(S, S);
+  const W = BASE_W;
+  const H = BASE_H;
   g.save();
+  rr(g, 2, 2, W - 4, H - 4, 20);
   g.clip();
-  g.strokeStyle = 'rgba(255,215,120,.22)';
-  g.lineWidth = 2;
-  for (let i = -H; i < W + H; i += 22) {
+  g.fillStyle = vGradient(g, 0, H, [[0, '#4a1636'], [1, '#14060f']]);
+  g.fillRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(255,215,140,.2)';
+  g.lineWidth = 1.5;
+  for (let i = -H; i < W + H; i += 20) {
     g.beginPath(); g.moveTo(i, 0); g.lineTo(i + H, H); g.stroke();
     g.beginPath(); g.moveTo(i + H, 0); g.lineTo(i, H); g.stroke();
   }
   g.restore();
-  rr(g, 6, 6, W - 12, H - 12, 26);
-  g.lineWidth = 9;
+  rr(g, 2.5, 2.5, W - 5, H - 5, 20);
+  g.lineWidth = 5;
   g.strokeStyle = vGradient(g, 0, H, [[0, '#ffe08a'], [0.5, '#a8741a'], [1, '#ffe08a']]);
   g.stroke();
+  rr(g, 12, 12, W - 24, H - 24, 14);
+  g.lineWidth = 1.5;
+  g.strokeStyle = 'rgba(255,224,138,.5)';
+  g.stroke();
   g.beginPath();
-  g.arc(W / 2, H / 2, 62, 0, Math.PI * 2);
-  g.fillStyle = 'rgba(12,8,28,.85)';
+  g.arc(W / 2, H / 2, 58, 0, Math.PI * 2);
+  g.fillStyle = 'rgba(14,5,12,.85)';
   g.fill();
-  g.lineWidth = 4;
+  g.lineWidth = 3;
   g.strokeStyle = '#ffe08a';
   g.stroke();
-  g.font = `64px ${EMOJI_FONT}`;
+  g.font = `60px ${EMOJI_FONT}`;
   g.fillStyle = '#ffe08a';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
@@ -319,9 +330,9 @@ export function vignetteTexture(): Texture {
 export function paintTable(w: number, h: number): HTMLCanvasElement {
   const [c, g] = canvas(Math.max(2, Math.floor(w)), Math.max(2, Math.floor(h)));
   const bg = g.createRadialGradient(w / 2, h * 0.45, 20, w / 2, h * 0.45, Math.max(w, h) * 0.75);
-  bg.addColorStop(0, '#2c1b4d');
-  bg.addColorStop(0.55, '#150c29');
-  bg.addColorStop(1, '#07040f');
+  bg.addColorStop(0, '#34142e');
+  bg.addColorStop(0.55, '#170a1f');
+  bg.addColorStop(1, '#06030a');
   g.fillStyle = bg;
   g.fillRect(0, 0, w, h);
   // faint rune circles
@@ -355,7 +366,7 @@ export interface BoardPaint {
 export function paintBoard(p: BoardPaint): HTMLCanvasElement {
   const [c, g] = canvas(Math.ceil(p.width), Math.ceil(p.height));
   rr(g, 2, 2, p.width - 4, p.height - 4, 22);
-  g.fillStyle = vGradient(g, 0, p.height, [[0, '#2a1d47'], [1, '#150e29']]);
+  g.fillStyle = vGradient(g, 0, p.height, [[0, '#2c1530'], [1, '#150a1c']]);
   g.fill();
   g.lineWidth = 4;
   g.strokeStyle = vGradient(g, 0, p.height, [[0, '#ffe08a'], [0.5, '#9a6b1c'], [1, '#ffe08a']]);
@@ -388,17 +399,6 @@ export function paintBoard(p: BoardPaint): HTMLCanvasElement {
       g.stroke();
     }
   }
-  return c;
-}
-
-export function paintTray(w: number, h: number): HTMLCanvasElement {
-  const [c, g] = canvas(Math.ceil(w), Math.ceil(h));
-  rr(g, 1.5, 1.5, w - 3, h - 3, 18);
-  g.fillStyle = 'rgba(14,9,30,.55)';
-  g.fill();
-  g.lineWidth = 2;
-  g.strokeStyle = 'rgba(190,150,255,.18)';
-  g.stroke();
   return c;
 }
 

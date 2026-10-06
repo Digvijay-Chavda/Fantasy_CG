@@ -7,7 +7,7 @@ import { audio } from './audio';
 import { CardView } from './CardView';
 import { Fx } from './fx';
 import { computeLayout, type Layout } from './layout';
-import { CARD_ASPECT, CARD_W, OWNER_COLORS, loadFonts, onArtLoaded, paintBoard, paintTable, paintTray, vignetteTexture } from './textures';
+import { CARD_ASPECT, CARD_H, CARD_W, OWNER_COLORS, loadFonts, onArtLoaded, paintBoard, paintTable, vignetteTexture } from './textures';
 
 export interface SceneCallbacks {
   /** Return true if the move was accepted (the store then calls `play`). */
@@ -44,8 +44,6 @@ export class TableScene {
   private world = new Container();
   private bg = new Sprite();
   private plate = new Sprite();
-  private trayP = new Sprite();
-  private trayE = new Sprite();
   private cellHi = new Graphics();
   private boardLayer = new Container();
   private enemyLayer = new Container();
@@ -56,7 +54,6 @@ export class TableScene {
   private vignette = new Sprite(vignetteTexture());
   private fx = new Fx();
   private previewText!: Text;
-  private nameLabel!: Text;
   private hiTween: gsap.core.Tween | null = null;
 
   /** Stationary hit areas for hand cards, so hover/drag don't flicker when a card lifts away. */
@@ -103,19 +100,14 @@ export class TableScene {
     this.vignette.eventMode = 'none';
     this.bg.eventMode = 'none';
     this.plate.eventMode = 'none';
-    this.trayP.eventMode = 'none';
-    this.trayE.eventMode = 'none';
-    this.world.addChild(this.bg, this.plate, this.trayE, this.trayP, this.cellHi, this.boardLayer, this.enemyLayer, this.handLayer, this.zoneLayer, this.flyLayer, this.fx.layer, this.uiLayer);
+    this.world.addChild(this.bg, this.plate, this.cellHi, this.boardLayer, this.enemyLayer, this.handLayer, this.zoneLayer, this.flyLayer, this.fx.layer, this.uiLayer);
     stage.addChild(this.world, this.vignette);
 
     const style = { fontFamily: '"Cinzel", Georgia, serif', fontWeight: '800' as const, stroke: { color: '#000000', width: 6 } };
     this.previewText = new Text({ text: '', style: { ...style, fontSize: 44, fill: '#ffe08a' } });
     this.previewText.anchor.set(0.5);
     this.previewText.visible = false;
-    this.nameLabel = new Text({ text: '', style: { ...style, fontSize: 18, fill: '#ffffff', stroke: { color: '#000000', width: 4 } } });
-    this.nameLabel.anchor.set(0.5, 1);
-    this.nameLabel.visible = false;
-    this.uiLayer.addChild(this.previewText, this.nameLabel);
+    this.uiLayer.addChild(this.previewText);
 
     this.relayout();
     this.app.renderer.on('resize', () => this.relayout());
@@ -154,10 +146,6 @@ export class TableScene {
     this.setTexture(this.bg, paintTable(w, h));
     this.setTexture(this.plate, paintBoard({ width: L.boardW, height: L.boardH, size: L.size, cellW: L.cellW, cellH: L.cellH, gap: L.gap, pad: L.pad }));
     this.plate.position.set(L.boardX, L.boardY);
-    this.setTexture(this.trayP, paintTray(L.playerTray.w, L.playerTray.h));
-    this.trayP.position.set(L.playerTray.x, L.playerTray.y);
-    this.setTexture(this.trayE, paintTray(L.enemyTray.w, L.enemyTray.h));
-    this.trayE.position.set(L.enemyTray.x, L.enemyTray.y);
     this.vignette.width = w;
     this.vignette.height = h;
     this.app.stage.hitArea = this.app.screen;
@@ -211,7 +199,7 @@ export class TableScene {
       const ch = cw * CARD_ASPECT;
       const left = i === 0 ? h.x - cw / 2 : h.x - step / 2;
       const right = i === n - 1 ? h.x + cw / 2 : h.x + step / 2;
-      const lift = L.cellH * 0.5;
+      const lift = ch * 0.2;
       z.hitArea = new Rectangle(left, h.y - ch / 2 - lift, right - left, ch + lift);
     });
   }
@@ -422,9 +410,9 @@ export class TableScene {
     }
     view.eventMode = 'none';
     view.cursor = 'default';
+    gsap.killTweensOf([view, view.scale]);
     view.setHalo(null);
     this.flyLayer.addChild(view);
-    this.nameLabel.visible = false;
     this.lastPlaced?.idleAura();
 
     const t = L.cell(cell);
@@ -490,7 +478,6 @@ export class TableScene {
     view.flash(by);
     this.fx.ring(b.x, b.y, tint, L.cellW);
     this.fx.burst(b.x, b.y, tint, 10, L.cellW * 1.6, 0.4, 0.5, 300);
-    this.fx.floatText(b.x, b.y, `${c.attack} > ${c.defense}`, by === 'player' ? '#9cc4ff' : '#ff9aa6', Math.max(20, L.cellW * 0.32));
     this.cb.onScore(this.boardScore());
   }
 
@@ -574,7 +561,6 @@ export class TableScene {
     if (this.drag || !this.inputOn) return;
     if (!v) {
       this.hovered = null;
-      this.nameLabel.visible = false;
       return;
     }
     if (this.selected === v.uid) return;
@@ -583,16 +569,11 @@ export class TableScene {
       audio.play('hover');
       v.zIndex = 500;
       gsap.killTweensOf([v, v.scale]);
-      gsap.to(v, { y: v.home.y - this.layout.cellH * 0.28, rotation: 0, duration: 0.18, ease: 'power2.out' });
-      gsap.to(v.scale, { x: v.home.scale * 1.22, y: v.home.scale * 1.22, duration: 0.18, ease: 'power2.out' });
-      if (v.def) {
-        this.nameLabel.text = v.def.name;
-        this.nameLabel.position.set(v.home.x, v.home.y - this.layout.cellH * 0.28 - v.home.scale * 1.22 * (CARD_W * CARD_ASPECT) * 0.5 - 4);
-        this.nameLabel.visible = true;
-      }
+      const lift = CARD_H * v.home.scale * 0.14;
+      gsap.to(v, { y: v.home.y - lift, rotation: 0, duration: 0.18, ease: 'power2.out' });
+      gsap.to(v.scale, { x: v.home.scale * 1.12, y: v.home.scale * 1.12, duration: 0.18, ease: 'power2.out' });
     } else if (this.hovered === v.uid) {
       this.hovered = null;
-      this.nameLabel.visible = false;
       this.returnHome(v);
     }
   }
@@ -601,7 +582,6 @@ export class TableScene {
     if (!this.inputOn || this.drag) return;
     const p = this.world.toLocal(e.global);
     this.drag = { view: v, startX: p.x, startY: p.y, dx: v.x - p.x, dy: v.y - p.y, moved: false };
-    this.nameLabel.visible = false;
   }
 
   private onMove(e: FederatedPointerEvent) {
@@ -661,11 +641,16 @@ export class TableScene {
   }
 
   private tryPlace(uid: number, cell: number): boolean {
+    // Clear the selection first: the store disables input as part of accepting the move, and that
+    // would otherwise tween the selected card back to its hand slot while it is flying to the board.
+    const wasSelected = this.selected === uid;
+    if (wasSelected) this.selected = null;
     const ok = this.cb.onPlace(uid, cell);
     if (ok) {
       this.clearPreview();
-      this.selected = null;
       this.redrawCellHighlights();
+    } else if (wasSelected) {
+      this.selected = uid;
     }
     return ok;
   }
@@ -682,8 +667,8 @@ export class TableScene {
         audio.play('select');
         v.zIndex = 600;
         gsap.killTweensOf([v, v.scale]);
-        gsap.to(v, { y: v.home.y - this.layout.cellH * 0.45, rotation: 0, duration: 0.2, ease: 'back.out(2)' });
-        gsap.to(v.scale, { x: v.home.scale * 1.28, y: v.home.scale * 1.28, duration: 0.2 });
+        gsap.to(v, { y: v.home.y - CARD_H * v.home.scale * 0.22, rotation: 0, duration: 0.2, ease: 'back.out(2)' });
+        gsap.to(v.scale, { x: v.home.scale * 1.1, y: v.home.scale * 1.1, duration: 0.2 });
         v.setHalo(0xffd34e, 0.9, true);
       }
     }

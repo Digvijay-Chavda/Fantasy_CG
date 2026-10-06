@@ -10,7 +10,8 @@
     "test": "vitest run",
     "sim": "vitest run tests/ai.test.ts",
     "shot": "node scripts/shot.mjs",
-    "playthrough": "node scripts/playthrough.mjs"
+    "playthrough": "node scripts/playthrough.mjs",
+    "click-test": "node scripts/click-place.mjs"
   },
   "dependencies": {
     "gsap": "^3.15.0",

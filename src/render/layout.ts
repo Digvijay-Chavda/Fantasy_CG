@@ -15,6 +15,7 @@ export interface Layout {
   boardH: number;
   /** Scale that makes a card fill a board cell. */
   cardScale: number;
+  /** Invisible areas the hands are fanned inside (no panel is drawn). */
   playerTray: { x: number; y: number; w: number; h: number };
   enemyTray: { x: number; y: number; w: number; h: number };
   cell(i: number): { x: number; y: number };
@@ -26,51 +27,61 @@ export interface Layout {
 }
 
 /** Space reserved for the React HUD along the top of the canvas. */
-const TOP_INSET = 70;
+const TOP_INSET = 64;
+/**
+ * Fraction of a card's width each neighbour advances. Near 1 keeps all four numbers readable; narrow
+ * (phone) screens accept heavy overlap because there is no room, and tapping lifts a card anyway.
+ */
+const minStep = (w: number) => (w < 640 ? 0.5 : 0.95);
 
 export function computeLayout(w: number, h: number, size: number): Layout {
   const margin = Math.max(10, w * 0.02);
-  const enemyZone = Math.max(44, Math.min(66, h * 0.085));
-  const handZone = Math.max(96, Math.min(215, h * 0.25));
+  const handCount = Math.ceil((size * size) / 2);
   const availW = w - margin * 2;
-  const availH = h - TOP_INSET - enemyZone - handZone - margin * 1.5;
+
+  // The player's cards are the star: as wide as the screen and a sensible share of its height allow.
+  const maxHandH = Math.min(h * 0.25, 280);
+  const handCardW = Math.min(maxHandH / CARD_ASPECT, availW / (1 + minStep(w) * (handCount - 1)));
+  const handCardH = handCardW * CARD_ASPECT;
+  // the fan dips towards the edges (arc + tilt), so reserve that space or the outer cards get clipped
+  const arcMax = Math.pow((handCount - 1) / 2, 2) * (handCardW * 0.006);
+  const handZone = Math.round(handCardH * 1.08 + arcMax * 2 + 12);
+
+  const enemyZone = Math.max(40, Math.min(58, h * 0.07));
+  const availH = h - TOP_INSET - enemyZone - handZone - margin;
 
   const gapRatio = 0.06;
   const padRatio = 0.1;
   // board width = size*cellW + (size-1)*gap + 2*pad
-  const byW = availW / (size + (size - 1) * gapRatio + 2 * padRatio);
-  const byH = availH / ((size + (size - 1) * gapRatio + 2 * padRatio) * CARD_ASPECT);
-  const cellW = Math.max(40, Math.floor(Math.min(byW, byH)));
+  const units = size + (size - 1) * gapRatio + 2 * padRatio;
+  const cellW = Math.max(40, Math.floor(Math.min(availW / units, availH / (units * CARD_ASPECT))));
   const cellH = Math.round(cellW * CARD_ASPECT);
   const gap = Math.round(cellW * gapRatio);
   const pad = Math.round(cellW * padRatio);
   const boardW = size * cellW + (size - 1) * gap + pad * 2;
   const boardH = size * cellH + (size - 1) * gap + pad * 2;
   const boardX = Math.round((w - boardW) / 2);
-  const boardY = Math.round(TOP_INSET + enemyZone + (availH - boardH) / 2 + margin * 0.25);
+  const boardY = Math.round(TOP_INSET + enemyZone + Math.max(0, (availH - boardH) / 2));
   const cardScale = (cellW * 0.97) / CARD_W;
 
-  // trays
-  const trayW = Math.min(w - margin * 2, Math.max(boardW * 1.3, 680));
-  const playerTray = { x: (w - trayW) / 2, y: h - handZone + 4, w: trayW, h: handZone - 12 };
-  const enemyTray = { x: (w - trayW) / 2, y: TOP_INSET + 2, w: trayW, h: enemyZone - 4 };
+  const playerTray = { x: margin, y: h - handZone, w: availW, h: handZone };
+  const enemyW = Math.min(availW * 0.7, 480);
+  const enemyTray = { x: (w - enemyW) / 2, y: TOP_INSET, w: enemyW, h: enemyZone };
 
-  // hand cards
-  const handCardW = Math.min(cellW * 1.05, (playerTray.h * 0.86) / CARD_ASPECT);
   const handScale = handCardW / CARD_W;
-  const enemyCardW = Math.min(enemyTray.h * 0.8 / CARD_ASPECT, cellW * 0.5);
+  const enemyCardW = Math.min((enemyZone * 0.92) / CARD_ASPECT, cellW * 0.55);
   const enemyScale = enemyCardW / CARD_W;
 
   const fan = (i: number, n: number, tray: typeof playerTray, cardW: number, scale: number, dir: 1 | -1): Home => {
     const mid = (n - 1) / 2;
-    const maxSpan = tray.w - cardW - 24;
-    const step = n > 1 ? Math.min(cardW * 1.02, maxSpan / (n - 1)) : 0;
+    const maxSpan = tray.w - cardW;
+    const step = n > 1 ? Math.min(cardW * 1.0, maxSpan / (n - 1)) : 0;
     const off = i - mid;
-    const arc = Math.pow(Math.abs(off), 2) * (cardW * 0.012);
+    const arc = Math.pow(Math.abs(off), 2) * (cardW * 0.006);
     return {
       x: tray.x + tray.w / 2 + off * step,
       y: dir === 1 ? tray.y + tray.h / 2 + arc : tray.y + tray.h / 2 - arc,
-      rotation: off * 0.045 * dir,
+      rotation: off * 0.03 * dir,
       scale,
     };
   };
