@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import { Board } from './components/board/Board';
-import './components/board/board.css';
+import { App } from './components/App';
+import './components/ui.css';
 
-createRoot(document.getElementById('root')!).render(<Board />);
+createRoot(document.getElementById('root')!).render(<App />);

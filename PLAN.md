@@ -10,7 +10,8 @@ Source: `pve_card_game_project_spec.md`. Order: gameplay → engine → AI → U
 |---|---|
 | M0 Scaffold | Done |
 | M1' Board prototype | Done: pure engine, fair dealing, Easy + Normal AI, game log, drag-and-drop, persistence, Zod card data, balance simulator, 19 tests |
-| Next | Playtest + tune (tiebreak for draws, board size, card pool), then PixiJS visuals / real art / menus / deck building |
+| M3' Visual layer | Done: PixiJS table, animations, particles, synthesised audio, menu/HUD/result UI, settings, stats, refresh-resume. Only real card artwork is missing (drop PNGs in `public/cards/`) |
+| Next | Real artwork, then deck building / collection / progression |
 
 Everything under "Milestones" below describes the **old** lane-battler plan and is kept for reference; the engine/AI/visual-layer ideas (pure deterministic engine, event log driving visuals, Zod data, headless balance simulator) carry over.
 

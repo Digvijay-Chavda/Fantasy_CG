@@ -5,7 +5,7 @@ Paste this file (plus [PLAN.md](PLAN.md)) into a new Claude session to resume wo
 ## What this is
 A dark-fantasy PvE card game (player vs AI). **The game was redesigned** from a lane-battler (units, Essence, heroes) to a **Triple Triad-style board game**, modelled on the card mini-game in *Witch Trainer Silver*: a single shared board, cards with four edge numbers, captures by comparing touching edges. The original lane-battler (statuses, evolution, combos, equipment, Normal AI) is preserved on the local git branch **`legacy/lane-battler`** (not pushed) if any of it is wanted again. The original spec (`pve_card_game_project_spec.md`) is not in the repo.
 
-Stack: Vite 8 + React 19 + TypeScript (strict) + Zustand 5 + Zod + Vitest 5.
+Stack: Vite 8 + React 19 + TypeScript (strict) + PixiJS 8 + GSAP + Zustand 5 + Zod + Vitest 5 (+ playwright-core for browser smoke tests).
 
 ```
 npm install
@@ -42,9 +42,9 @@ src/
     sim/simulate.ts   headless AI-vs-AI batches (first mover alternates)
     log.ts            describeEvents(): events -> readable lines ("Enemy placed Mage at B3", "  ↳ ... captured ...")
   data/cards.ts       28 placeholder cards + Zod schema + buildRegistry(); CARDS, CARD_POOL
-  store/gameStore.ts  Zustand: game snapshot, selection, aiThinking, log, lastPlaced/lastFlipped,
-                      difficulty; persists to localStorage; run-token cancels a stale AI turn on Restart
-  components/board/   Board.tsx (score bar, grid, hands, log, controls), CardFace.tsx, board.css
+  store/gameStore.ts  Zustand: screens, settings, stats, game flow + persistence; run-token cancels a stale AI turn
+  render/             PixiJS: TableScene, CardView, fx, layout, textures, audio, presenter (store->scene slot)
+  components/         React: App, Table (canvas host), Hud, Menu, Modals (result + how-to), ui.css
   main.tsx
 tests/rules.test.ts   capture rules, no-chain, edges, turn/end, dealing, Zod, architecture
 tests/ai.test.ts      legal full games, Normal beats Easy from both seats, mirror sanity
@@ -56,10 +56,13 @@ tests/ai.test.ts      legal full games, Normal beats Easy from both seats, mirro
 - **Fog of war**: the AI only sees `getVisibleState` (opponent hand masked as `HIDDEN`).
 - **Persistence**: the whole game (+ AI rng, difficulty, log) is saved to localStorage key `fantasy-cg-triad-save-v1` after every action, so a refresh restores the same game; only Restart deals a new one. A save with unknown card ids is discarded.
 
-### UI
-- Score bar (You / status / Enemy), enemy hand as face-down backs, 4x4 grid, your hand (fixed 8-slot grid with dashed placeholders so the container never resizes), log, Restart + AI difficulty.
-- Drag a card onto an empty cell, or click a card then a cell. Hovering a legal cell previews how many cards it would flip (+N). Blue = yours, red = enemy's; captured cards replay a flip animation; the last placed cell has a gold outline.
-- Card art is a placeholder glyph per card (`CardDef.glyph`); swap for real artwork later.
+### Presentation layer (production-style UI)
+- **PixiJS table** (`src/render/`): procedural card faces painted to canvas textures (rarity borders, owner colours, four edge numbers, glyph art window), ornate board plate, trays, vignette, rising embers. `TableScene` owns drag-and-drop (stationary hit zones per hand card so hover never flickers), click-to-select, green legal-cell outlines, capture preview (`+N` and glowing targets), and every animation: deal-in with face-up flips, hover lift with name label, card slam with shake/ring/sparks, the enemy card rising and revealing before it lands, staggered capture flips with beams and "12 > 11" popups, turn banners, confetti on victory.
+- **Flow** (`store/gameStore.ts`): `placeCard` returns true/false synchronously (the scene calls it from the drop), then `scene.play(events, state)` animates; the AI loop awaits the animation before the next step; `busy` blocks input. `setShownScore` is driven by the scene so HUD scores tick up as flips land. Screens: menu (Continue / New game / How to play / difficulty / sound / music / speed / stats) and game (HUD + log drawer + options popover), plus a result modal after the finale.
+- **Audio** (`render/audio.ts`): everything is synthesised with Web Audio (no asset files), plus an ambient pad. Unlocked on the first pointer press.
+- **Settings/stats** persist in localStorage (`fantasy-cg-settings-v1`, `fantasy-cg-stats-v1`); the game itself in `fantasy-cg-triad-save-v1`.
+- **Artwork**: only art is left to supply. `public/cards/<cardId>.png` is auto-detected and swapped in live (see README); `Cinzel` and `Inter` come from Google Fonts in `index.html`.
+- **Testing the UI**: run `npm run dev -- --port 5199`, then `npm run shot` / `npm run playthrough` (headless Chrome via playwright-core; screenshots go to `shots/`, which is git-ignored). In dev the scene is exposed as `window.__scene` for these scripts.
 
 ## Balance snapshot (100 games each, `SIM_GAMES=100 npm run sim`, with the tiebreak)
 Normal vs Easy: 73-27 (player seat) and 74-26 (ai seat), 0 draws. Normal mirror: 46/53/1 draw. The first mover wins about 22-31% of the time overall (roughly even once seats alternate). Before the tiebreak ~20% of games were 8-8 draws.
@@ -67,10 +70,11 @@ Normal vs Easy: 73-27 (player seat) and 74-26 (ai seat), 0 draws. Normal mirror:
 ## Known gaps / ideas
 - Board size is a constant; no UI to change it. A 5x5 board gives the first mover 13 cards vs 12.
 - No Same/Plus/Combo-style extra rules (the Witch Trainer Silver guides don't mention any), no card elements, no deck building or card collection, no rewards/progression.
-- Card art is placeholder; the PixiJS visual layer from PLAN.md M3 is not started.
+- Card art is the only missing content (placeholder glyphs); there is no card-back/table/logo image slot yet (they are painted procedurally in `render/textures.ts`).
 - No ESLint config; the "engine has no UI imports" rule is a test only.
 - No first-move balancing (the guides say going second is easier).
-- The UI was only build-checked (`npm run build`), not looked at in a browser by the author of this handover: check layout, drag-and-drop and the flip animation.
+- The UI was verified in headless Chrome at desktop (1100x780) and phone (390x844) sizes: deal, drag, click, capture, result, refresh-resume. Real-device touch and audio were not tested.
+- On a phone the 8-card hand overlaps heavily (tap a card to lift it).
 
 ## Conventions for future work
 - Put all rules in `src/game/engine/` and keep them deterministic and UI-free; add a Vitest test per rule.
