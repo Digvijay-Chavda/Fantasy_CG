@@ -1,4 +1,5 @@
 export * from './types';
 export * from './constants';
 export { GameEngine } from './GameEngine';
-export { legalActions, attackTargets, freeSlots, getVisibleState, canRecall } from './reducer';
+export { opponentOf } from './opponent';
+export { applyAction, capturesFor, emptyCells, getVisibleState, handSizes, legalActions, neighbour, score, SIDES } from './rules';
