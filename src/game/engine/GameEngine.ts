@@ -1,25 +1,21 @@
-import { applyAction, createGame, getVisibleState, legalActions } from './reducer';
-import type {
-  Action,
-  CardRegistry,
-  GameConfig,
-  GameEvent,
-  GameState,
-  PlayerId,
-  Row,
-} from './types';
+import { applyAction, createGame, getVisibleState, legalActions } from './rules';
+import type { Action, CardRegistry, GameConfig, GameEvent, GameState, PlayerId } from './types';
 
-/** Headless, framework-free facade over the pure reducer. */
+/** Headless, framework-free facade over the pure rules. */
 export class GameEngine {
   private state: GameState;
   readonly cards: CardRegistry;
-  private log: GameEvent[];
+  private log: GameEvent[] = [];
 
   constructor(config: GameConfig) {
     this.cards = config.cards;
-    const { state, events } = createGame(config);
+    this.state = createGame(config).state;
+  }
+
+  /** Replaces the current game with a saved snapshot (e.g. after a page refresh). */
+  restore(state: GameState) {
     this.state = state;
-    this.log = events;
+    this.log = [];
   }
 
   getState(): GameState {
@@ -31,35 +27,22 @@ export class GameEngine {
   }
 
   getLegalActions(playerId: PlayerId): Action[] {
-    return legalActions(this.state, this.cards, playerId);
+    return legalActions(this.state, playerId);
   }
 
   getEventLog(): readonly GameEvent[] {
     return this.log;
   }
 
-  /** Applies an action for the active player and returns the events it produced. */
   dispatch(playerId: PlayerId, action: Action): GameEvent[] {
-    if (playerId !== this.state.active) throw new Error(`Not ${playerId}'s turn`);
+    if (playerId !== this.state.active) throw new Error(`It is not the ${playerId}'s turn`);
     const { state, events } = applyAction(this.state, action, this.cards);
     this.state = state;
     this.log.push(...events);
     return events;
   }
 
-  playCard(playerId: PlayerId, uid: number, row?: Row, slot?: number) {
-    return this.dispatch(playerId, { type: 'PLAY_CARD', uid, row, slot });
-  }
-
-  attack(playerId: PlayerId, attackerUid: number, target: Extract<Action, { type: 'ATTACK' }>['target']) {
-    return this.dispatch(playerId, { type: 'ATTACK', attackerUid, target });
-  }
-
-  recall(playerId: PlayerId, unitUid: number) {
-    return this.dispatch(playerId, { type: 'RECALL_UNIT', unitUid });
-  }
-
-  endTurn(playerId: PlayerId = this.state.active) {
-    return this.dispatch(playerId, { type: 'END_TURN' });
+  place(playerId: PlayerId, uid: number, cell: number) {
+    return this.dispatch(playerId, { type: 'PLACE', uid, cell });
   }
 }

@@ -4,16 +4,15 @@ Source: `pve_card_game_project_spec.md`. Order: gameplay → engine → AI → U
 
 ## Status (updated)
 
+**Direction change:** the lane-battler design below (Hero HP, Essence, Frontline/Backline, statuses, evolution) was replaced by a **Triple Triad-style board game** modelled on the card mini-game in *Witch Trainer Silver*: one shared board, four numbers per card, capture adjacent enemy cards with a strictly higher touching number, most cards on the board wins. The lane-battler work (M1 + most of M2) lives on the local branch `legacy/lane-battler`. See [HANDOVER.md](HANDOVER.md) for the current rules and architecture.
+
 | Milestone | State |
 |---|---|
-| M0 Scaffold | Done (Vite, React, TS strict, Vitest) |
-| M1 Combat prototype | Done: engine, Easy AI, placeholder cards, game log, drag-and-drop hand, recall of units deployed this turn, placeholder card faces. 18 tests passing |
-| M2 Engine depth | **Next**: statuses, evolution, combos, other card types, Normal AI, save/load, balance simulator |
-| M3-M6 | Not started |
+| M0 Scaffold | Done |
+| M1' Board prototype | Done: pure engine, fair dealing, Easy + Normal AI, game log, drag-and-drop, persistence, Zod card data, balance simulator, 19 tests |
+| Next | Playtest + tune (tiebreak for draws, board size, card pool), then PixiJS visuals / real art / menus / deck building |
 
-Approved rules (now implemented): Hero 30 HP, 3 Frontline + 3 Backline slots, Essence +1 per turn capped at 10, Hero only attackable once the enemy Frontline is empty, ranged units bypass the frontline for units. See [HANDOVER.md](HANDOVER.md) for architecture and resume notes.
-
-Open items before M2: playtest M1 and tune; add `.gitattributes` to normalise line endings (some files are CRLF); add an ESLint boundary rule alongside the existing engine-import test.
+Everything under "Milestones" below describes the **old** lane-battler plan and is kept for reference; the engine/AI/visual-layer ideas (pure deterministic engine, event log driving visuals, Zod data, headless balance simulator) carry over.
 
 ## Guiding decisions
 

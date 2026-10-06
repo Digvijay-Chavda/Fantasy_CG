@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import { Battle } from './components/battle-ui/Battle';
-import './components/battle-ui/battle.css';
+import { Board } from './components/board/Board';
+import './components/board/board.css';
 
-createRoot(document.getElementById('root')!).render(<Battle />);
+createRoot(document.getElementById('root')!).render(<Board />);
