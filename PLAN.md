@@ -2,6 +2,19 @@
 
 Source: `pve_card_game_project_spec.md`. Order: gameplay → engine → AI → UI → animation → art → polish.
 
+## Status (updated)
+
+| Milestone | State |
+|---|---|
+| M0 Scaffold | Done (Vite, React, TS strict, Vitest) |
+| M1 Combat prototype | Done: engine, Easy AI, placeholder cards, game log, drag-and-drop hand, recall of units deployed this turn, placeholder card faces. 18 tests passing |
+| M2 Engine depth | **Next**: statuses, evolution, combos, other card types, Normal AI, save/load, balance simulator |
+| M3-M6 | Not started |
+
+Approved rules (now implemented): Hero 30 HP, 3 Frontline + 3 Backline slots, Essence +1 per turn capped at 10, Hero only attackable once the enemy Frontline is empty, ranged units bypass the frontline for units. See [HANDOVER.md](HANDOVER.md) for architecture and resume notes.
+
+Open items before M2: playtest M1 and tune; add `.gitattributes` to normalise line endings (some files are CRLF); add an ESLint boundary rule alongside the existing engine-import test.
+
 ## Guiding decisions
 
 - **Engine is a pure TypeScript package** (`src/game/`), no React/Pixi imports. Enforce with an ESLint `no-restricted-imports` rule and run engine tests in plain Node (Vitest).
