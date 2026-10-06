@@ -1,6 +1,7 @@
 import { PLACEHOLDER_CARDS } from '../../data/cards/placeholder';
-import { attackTargets, freeSlots } from '../../game/engine';
+import { attackTargets, freeSlots, MAX_HAND } from '../../game/engine';
 import type { PlayerId, Row, Unit } from '../../game/engine';
+import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 
 /** Throwaway DOM prototype (M1). The real battlefield will be PixiJS (M3). */
@@ -13,7 +14,13 @@ export function Battle() {
   const targets = selectedUnit ? attackTargets(game, selectedUnit, PLACEHOLDER_CARDS) : [];
   const heroTargetable = targets.some((t) => t.kind === 'HERO');
   const unitTargetable = (uid: number) => targets.some((t) => t.kind === 'UNIT' && t.uid === uid);
-  const selectedCard = s.selectedHand ? PLACEHOLDER_CARDS[me.hand.find((c) => c.uid === s.selectedHand)?.cardId ?? ''] : undefined;
+  const [dragUid, setDragUid] = useState<number | null>(null);
+  const [overSlot, setOverSlot] = useState<string | null>(null);
+  const dragCard = dragUid !== null ? PLACEHOLDER_CARDS[me.hand.find((c) => c.uid === dragUid)?.cardId ?? ''] : undefined;
+  const selectedCard = dragCard ?? (s.selectedHand ? PLACEHOLDER_CARDS[me.hand.find((c) => c.uid === s.selectedHand)?.cardId ?? ''] : undefined);
+
+  const logEnd = useRef<HTMLDivElement>(null);
+  useEffect(() => logEnd.current?.scrollIntoView({ block: 'nearest' }), [s.log.length]);
 
   const unitAt = (owner: PlayerId, row: Row, slot: number) =>
     game.units.find((u) => u.owner === owner && u.row === row && u.slot === slot);
@@ -38,7 +45,24 @@ export function Battle() {
         {[0, 1, 2].map((slot) => {
           const u = unitAt(owner, row, slot);
           return (
-            <div key={slot} className={`slot ${free.includes(slot) ? 'open' : ''}`} onClick={() => !u && free.includes(slot) && s.deploy(row, slot)}>
+            <div
+              key={slot}
+              className={`slot ${free.includes(slot) ? 'open' : ''} ${overSlot === `${owner}-${row}-${slot}` ? 'drop-over' : ''}`}
+              onClick={() => !u && free.includes(slot) && s.deploy(row, slot)}
+              onDragOver={(e) => {
+                if (!u && free.includes(slot)) {
+                  e.preventDefault();
+                  setOverSlot(`${owner}-${row}-${slot}`);
+                }
+              }}
+              onDragLeave={() => setOverSlot(null)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setOverSlot(null);
+                if (dragUid !== null && !u && free.includes(slot)) s.deployCard(dragUid, row, slot);
+                setDragUid(null);
+              }}
+            >
               {u ? renderUnit(u) : null}
             </div>
           );
@@ -58,17 +82,42 @@ export function Battle() {
       {hero('Enemy Hero', foe.heroHealth, foe.essence, foe.maxEssence, heroTargetable, foe.hand.length)}
       {renderRow('ai', 'BACK')}
       {renderRow('ai', 'FRONT')}
-      <div className="divider">Turn {game.turn} — {game.active === 'player' ? 'Your turn' : 'Enemy turn'}{s.aiThinking ? '…' : ''}</div>
+      <div
+        className={`divider ${dragCard?.type === 'SPELL' ? 'spell-drop' : ''}`}
+        onDragOver={(e) => dragCard?.type === 'SPELL' && e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (dragUid !== null && dragCard?.type === 'SPELL') s.selectHand(dragUid);
+          setDragUid(null);
+        }}
+      >
+        {dragCard?.type === 'SPELL' ? 'Drop here to cast ' + dragCard.name + ' — ' : ''}Turn {game.turn} — {game.active === 'player' ? 'Your turn' : 'Enemy turn'}{s.aiThinking ? '…' : ''}</div>
       {renderRow('player', 'FRONT')}
       {renderRow('player', 'BACK')}
       {hero('Your Hero', me.heroHealth, me.essence, me.maxEssence, false, me.hand.length)}
 
       <div className="hand">
-        {me.hand.map((c) => {
+        {Array.from({ length: MAX_HAND }, (_, i) => {
+          const c = me.hand[i];
+          if (!c) return <div key={`empty-${i}`} className="card-placeholder" />;
           const d = PLACEHOLDER_CARDS[c.cardId]!;
           const playable = game.active === 'player' && d.cost <= me.essence && !s.aiThinking;
           return (
-            <div key={c.uid} className={`card ${playable ? 'playable' : ''} ${s.selectedHand === c.uid ? 'selected' : ''}`} onClick={() => s.selectHand(c.uid)}>
+            <div
+              key={c.uid}
+              className={`card ${playable ? 'playable' : ''} ${s.selectedHand === c.uid ? 'selected' : ''} ${dragUid === c.uid ? 'dragging' : ''}`}
+              draggable={playable}
+              onClick={() => s.selectHand(c.uid)}
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(c.uid));
+                setDragUid(c.uid);
+              }}
+              onDragEnd={() => {
+                setDragUid(null);
+                setOverSlot(null);
+              }}
+            >
               <div className="cost">◆ {d.cost}</div>
               <b>{d.name}</b>
               {d.type === 'CHARACTER' && <span>⚔ {d.power} / ♥ {d.health}</span>}
@@ -76,6 +125,14 @@ export function Battle() {
             </div>
           );
         })}
+      </div>
+
+      <div className="log">
+        {s.log.length === 0 && <i>Game log appears here.</i>}
+        {s.log.map((line, i) => (
+          <div key={i}>{line}</div>
+        ))}
+        <div ref={logEnd} />
       </div>
 
       <div className="controls">

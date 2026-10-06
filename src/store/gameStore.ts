@@ -3,13 +3,15 @@ import { PLACEHOLDER_CARDS } from '../data/cards/placeholder';
 import { STARTER_DECK } from '../data/decks/starter';
 import { nextAiAction, type AiPlayer } from '../game/ai/runner';
 import { GameEngine } from '../game/engine';
-import type { AttackTarget, GameState, Row } from '../game/engine';
+import type { AttackTarget, GameEvent, GameState, Row } from '../game/engine';
+import { describeEvents } from '../game/log';
 
 const AI_DELAY_MS = 700;
+const LOG_LIMIT = 60;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-let engine = newEngine();
 let ai: AiPlayer = { rngState: 1234 };
+let engine = newEngine();
 
 function newEngine() {
   const seed = (Math.random() * 2 ** 32) >>> 0;
@@ -27,10 +29,12 @@ interface GameStore {
   selectedHand: number | null;
   selectedUnit: number | null;
   aiThinking: boolean;
+  log: string[];
   error: string | null;
   selectHand: (uid: number) => void;
   selectUnit: (uid: number) => void;
   deploy: (row: Row, slot: number) => void;
+  deployCard: (uid: number, row: Row, slot: number) => void;
   attack: (target: AttackTarget) => void;
   endTurn: () => void;
   restart: () => void;
@@ -39,6 +43,17 @@ interface GameStore {
 export const useGameStore = create<GameStore>((set, get) => {
   const sync = (extra: Partial<GameStore> = {}) =>
     set({ game: engine.getState(), error: null, ...extra });
+  /** Runs an engine action and appends a readable description of what happened to the log. */
+  const act = (fn: () => GameEvent[]) => {
+    const before = engine.getState();
+    const events = fn();
+    // A turn change also draws a card; only announce the new turn itself.
+    const shown = events.some((e) => e.type === 'TURN_STARTED')
+      ? events.filter((e) => e.type === 'TURN_STARTED')
+      : events;
+    const lines = describeEvents(shown, before, PLACEHOLDER_CARDS);
+    set({ log: [...get().log, ...lines].slice(-LOG_LIMIT) });
+  };
   const guard = (fn: () => void) => {
     try {
       fn();
@@ -52,7 +67,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     while (!engine.getState().winner && engine.getState().active === 'ai') {
       await sleep(AI_DELAY_MS);
       const action = nextAiAction(engine, 'ai', ai);
-      engine.dispatch('ai', action);
+      act(() => engine.dispatch('ai', action));
       sync({ aiThinking: true });
     }
     set({ aiThinking: false });
@@ -63,6 +78,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     selectedHand: null,
     selectedUnit: null,
     aiThinking: false,
+    log: [],
     error: null,
 
     selectHand: (uid) => {
@@ -73,7 +89,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (!d) return;
       if (d.type === 'SPELL') {
         guard(() => {
-          engine.playCard('player', uid);
+          act(() => engine.playCard('player', uid));
           sync({ selectedHand: null, selectedUnit: null });
         });
       } else {
@@ -88,9 +104,13 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     deploy: (row, slot) => {
       const uid = get().selectedHand;
-      if (uid === null) return;
+      if (uid !== null) get().deployCard(uid, row, slot);
+    },
+
+    deployCard: (uid, row, slot) => {
+      if (get().aiThinking || get().game.active !== 'player') return;
       guard(() => {
-        engine.playCard('player', uid, row, slot);
+        act(() => engine.playCard('player', uid, row, slot));
         sync({ selectedHand: null });
       });
     },
@@ -99,7 +119,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       const uid = get().selectedUnit;
       if (uid === null) return;
       guard(() => {
-        engine.attack('player', uid, target);
+        act(() => engine.attack('player', uid, target));
         sync({ selectedUnit: null });
       });
     },
@@ -107,7 +127,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     endTurn: () => {
       if (get().aiThinking || get().game.winner) return;
       guard(() => {
-        engine.endTurn('player');
+        act(() => engine.endTurn('player'));
         sync({ selectedHand: null, selectedUnit: null });
         void runAiTurn();
       });
@@ -115,7 +135,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     restart: () => {
       engine = newEngine();
-      sync({ selectedHand: null, selectedUnit: null, aiThinking: false });
+      sync({ selectedHand: null, selectedUnit: null, aiThinking: false, log: [] });
     },
   };
 });

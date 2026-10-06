@@ -12,8 +12,13 @@ body { margin: 0; background: #14101c; color: #e8e2f0; }
 .unit { flex: 1; }
 .unit.ready { border-color: #f5c542; cursor: pointer; }
 .card.selected { border-color: #7aa2ff; box-shadow: 0 0 8px #7aa2ff; }
-.hand { display: flex; gap: 8px; flex-wrap: wrap; }
-.hand .card { width: 140px; min-height: 110px; opacity: .55; cursor: pointer; }
+.hand { display: grid; grid-template-columns: repeat(5, 1fr); grid-auto-rows: 120px; gap: 8px; }
+.hand .card { height: 100%; box-sizing: border-box; opacity: .55; cursor: pointer; overflow: hidden; }
+.hand .card.playable { cursor: grab; }
+.hand .card.dragging { opacity: .25; border-style: dashed; }
+.card-placeholder { border: 1px dashed #3a2f50; border-radius: 8px; background: #181222; }
+.slot.drop-over { background: #2b4a3c; box-shadow: inset 0 0 10px #6ee7a8; }
+.divider.spell-drop { background: #3a2a1e; border-color: #f5c542; }
 .hand .card.playable { opacity: 1; }
 .cost { color: #7aa2ff; font-weight: bold; }
 small { opacity: .75; }
@@ -22,3 +27,5 @@ button { background: #5b3fd1; color: #fff; border: 0; border-radius: 6px; paddin
 button:disabled { opacity: .4; cursor: default; }
 .error { color: #ff8a8a; }
 .overlay { position: fixed; inset: 0; background: #000b; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+
+.log { max-height: 160px; overflow-y: auto; font-size: 13px; padding: 8px 10px; background: #1a1626; border-radius: 6px; display: flex; flex-direction: column; gap: 2px; }
