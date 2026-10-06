@@ -2,6 +2,7 @@ import { PLACEHOLDER_CARDS } from '../../data/cards/placeholder';
 import { attackTargets, canRecall, freeSlots, MAX_HAND } from '../../game/engine';
 import type { PlayerId, Row, Unit } from '../../game/engine';
 import { useEffect, useRef, useState } from 'react';
+import { CardFace } from './CardFace';
 import { useGameStore } from '../../store/gameStore';
 
 /** Throwaway DOM prototype (M1). The real battlefield will be PixiJS (M3). */
@@ -49,8 +50,7 @@ export function Battle() {
           setOverHand(false);
         }}
         onClick={() => (mine ? s.selectUnit(u.uid) : unitTargetable(u.uid) && s.attack({ kind: 'UNIT', uid: u.uid }))}>
-        <b>{d.name}</b>
-        <span>{d.ranged ? '🏹' : '⚔'} {u.power} / ♥ {u.health}</span>
+        <CardFace def={d} power={u.power} health={u.health} maxHealth={u.maxHealth} compact />
       </div>
     );
   };
@@ -151,10 +151,7 @@ export function Battle() {
                 setOverSlot(null);
               }}
             >
-              <div className="cost">◆ {d.cost}</div>
-              <b>{d.name}</b>
-              {d.type === 'CHARACTER' && <span>⚔ {d.power} / ♥ {d.health}</span>}
-              <small>{d.text}</small>
+              <CardFace def={d} />
             </div>
           );
         })}
