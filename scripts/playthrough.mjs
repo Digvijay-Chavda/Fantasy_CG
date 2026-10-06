@@ -23,8 +23,7 @@ const taken = new Set();
 for (let guard = 0; guard < 80; guard++) {
   await page.waitForTimeout(500);
   if (await page.locator('.result').count()) break;
-  const s = await status();
-  if (!/your turn/i.test(s)) continue;
+  if (!(await page.evaluate(() => window.__scene.inputOn))) continue;
   const pts = await page.evaluate(() => window.__scene.debugPoints());
   const used = await page.evaluate(() => JSON.parse(localStorage.getItem('fantasy-cg-triad-save-v1')).state.board.map((c) => !!c));
   const cell = used.findIndex((u) => !u);
