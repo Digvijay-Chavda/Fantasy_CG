@@ -76,10 +76,10 @@ describe('combat rules', () => {
     const e = rig(['knight']);
     const s = e.getState();
     s.units.push(
-      { uid: 900, cardId: 'knight', owner: 'player', power: 3, health: 3, maxHealth: 3, row: 'FRONT', slot: 0, ready: true },
-      { uid: 901, cardId: 'archer', owner: 'player', power: 2, health: 2, maxHealth: 2, row: 'BACK', slot: 0, ready: true },
-      { uid: 910, cardId: 'knight', owner: 'ai', power: 3, health: 3, maxHealth: 3, row: 'FRONT', slot: 0, ready: true },
-      { uid: 911, cardId: 'healer', owner: 'ai', power: 1, health: 3, maxHealth: 3, row: 'BACK', slot: 0, ready: true },
+      { uid: 900, cardId: 'knight', owner: 'player', power: 3, health: 3, maxHealth: 3, row: 'FRONT', slot: 0, ready: true, cardUid: 0, deployedTurn: -1 },
+      { uid: 901, cardId: 'archer', owner: 'player', power: 2, health: 2, maxHealth: 2, row: 'BACK', slot: 0, ready: true, cardUid: 0, deployedTurn: -1 },
+      { uid: 910, cardId: 'knight', owner: 'ai', power: 3, health: 3, maxHealth: 3, row: 'FRONT', slot: 0, ready: true, cardUid: 0, deployedTurn: -1 },
+      { uid: 911, cardId: 'healer', owner: 'ai', power: 1, health: 3, maxHealth: 3, row: 'BACK', slot: 0, ready: true, cardUid: 0, deployedTurn: -1 },
     );
     return e;
   }
@@ -180,5 +180,27 @@ describe('architecture', () => {
     for (const file of walk('src/game')) {
       expect(readFileSync(file, 'utf8'), file).not.toMatch(/from ['"](react|react-dom|pixi\.js|zustand)/);
     }
+  });
+});
+
+describe('recall', () => {
+  it('returns a unit deployed this turn to hand and refunds Essence', () => {
+    const e = rig(['squire']);
+    giveHand(e, 'player', ['squire']);
+    const card = uidOf(e, 'player', 'squire');
+    e.playCard('player', card, 'FRONT', 0);
+    const unit = e.getState().units[0]!;
+    expect(e.getState().players.player.essence).toBe(0);
+    e.recall('player', unit.uid);
+    const p = e.getState().players.player;
+    expect(e.getState().units).toHaveLength(0);
+    expect(p.essence).toBe(1);
+    expect(p.hand.some((c) => c.uid === card)).toBe(true);
+  });
+
+  it('refuses to recall units with on-play effects or from earlier turns', () => {
+    const e = rig(['squire', 'healer']);
+    e.getState().units.push({ uid: 900, cardId: 'squire', owner: 'player', power: 1, health: 2, maxHealth: 2, row: 'FRONT', slot: 0, ready: true, cardUid: 0, deployedTurn: -1 });
+    expect(() => e.recall('player', 900)).toThrow();
   });
 });

@@ -55,6 +55,10 @@ export class GameEngine {
     return this.dispatch(playerId, { type: 'ATTACK', attackerUid, target });
   }
 
+  recall(playerId: PlayerId, unitUid: number) {
+    return this.dispatch(playerId, { type: 'RECALL_UNIT', unitUid });
+  }
+
   endTurn(playerId: PlayerId = this.state.active) {
     return this.dispatch(playerId, { type: 'END_TURN' });
   }

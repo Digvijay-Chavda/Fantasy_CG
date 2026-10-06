@@ -276,6 +276,9 @@ export function applyAction(state: GameState, action: Action, cards: CardRegistr
     case 'ATTACK':
       attack(ctx, pid, action.attackerUid, action.target);
       break;
+    case 'RECALL_UNIT':
+      recallUnit(ctx, pid, action.unitUid);
+      break;
     case 'END_TURN':
       startTurn(ctx, opponentOf(pid));
       break;
@@ -307,6 +310,8 @@ function playCard(ctx: Ctx, pid: PlayerId, a: Extract<Action, { type: 'PLAY_CARD
       row: a.row,
       slot: a.slot,
       ready: false,
+      cardUid: inst.uid,
+      deployedTurn: ctx.state.turn,
     });
   }
   p.essence -= d.cost;
@@ -315,6 +320,23 @@ function playCard(ctx: Ctx, pid: PlayerId, a: Extract<Action, { type: 'PLAY_CARD
   for (const ability of d.abilities) {
     if (ability.trigger === 'ON_PLAY' && !ctx.state.winner) resolveAbility(ctx, pid, ability);
   }
+}
+
+/** Whether `u` may still be taken back this turn (no side effects to undo). */
+export function canRecall(state: GameState, u: Unit, cards: CardRegistry): boolean {
+  const d = cards[u.cardId];
+  return !state.winner && state.active === u.owner && u.deployedTurn === state.turn && !!d && d.abilities.length === 0;
+}
+
+function recallUnit(ctx: Ctx, pid: PlayerId, unitUid: number) {
+  const unit = ctx.state.units.find((u) => u.uid === unitUid && u.owner === pid);
+  if (!unit || !canRecall(ctx.state, unit, ctx.cards)) throw new Error('This unit cannot be recalled');
+  const p = ctx.state.players[pid];
+  const d = def(ctx, unit.cardId);
+  ctx.state.units = ctx.state.units.filter((u) => u.uid !== unitUid);
+  p.hand.push({ uid: unit.cardUid, cardId: unit.cardId });
+  p.essence = Math.min(p.maxEssence, p.essence + d.cost);
+  ctx.events.push({ type: 'UNIT_RECALLED', player: pid, cardId: unit.cardId });
 }
 
 function attack(ctx: Ctx, pid: PlayerId, attackerUid: number, target: AttackTarget) {

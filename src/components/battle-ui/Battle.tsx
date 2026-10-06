@@ -1,5 +1,5 @@
 import { PLACEHOLDER_CARDS } from '../../data/cards/placeholder';
-import { attackTargets, freeSlots, MAX_HAND } from '../../game/engine';
+import { attackTargets, canRecall, freeSlots, MAX_HAND } from '../../game/engine';
 import type { PlayerId, Row, Unit } from '../../game/engine';
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
@@ -15,12 +15,16 @@ export function Battle() {
   const heroTargetable = targets.some((t) => t.kind === 'HERO');
   const unitTargetable = (uid: number) => targets.some((t) => t.kind === 'UNIT' && t.uid === uid);
   const [dragUid, setDragUid] = useState<number | null>(null);
+  const [dragUnitUid, setDragUnitUid] = useState<number | null>(null);
+  const [overHand, setOverHand] = useState(false);
   const [overSlot, setOverSlot] = useState<string | null>(null);
   const dragCard = dragUid !== null ? PLACEHOLDER_CARDS[me.hand.find((c) => c.uid === dragUid)?.cardId ?? ''] : undefined;
   const selectedCard = dragCard ?? (s.selectedHand ? PLACEHOLDER_CARDS[me.hand.find((c) => c.uid === s.selectedHand)?.cardId ?? ''] : undefined);
 
   const logEnd = useRef<HTMLDivElement>(null);
-  useEffect(() => logEnd.current?.scrollIntoView({ block: 'nearest' }), [s.log.length]);
+  useEffect(() => {
+    logEnd.current?.scrollIntoView({ block: 'nearest' });
+  }, [s.log.length]);
 
   const unitAt = (owner: PlayerId, row: Row, slot: number) =>
     game.units.find((u) => u.owner === owner && u.row === row && u.slot === slot);
@@ -29,8 +33,22 @@ export function Battle() {
     const d = PLACEHOLDER_CARDS[u.cardId]!;
     const mine = u.owner === 'player';
     const cls = ['card', 'unit', mine && u.ready ? 'ready' : '', s.selectedUnit === u.uid ? 'selected' : '', !mine && unitTargetable(u.uid) ? 'targetable' : ''].join(' ');
+    const recallable = mine && !s.aiThinking && canRecall(game, u, PLACEHOLDER_CARDS);
     return (
-      <div className={cls} onClick={() => (mine ? s.selectUnit(u.uid) : unitTargetable(u.uid) && s.attack({ kind: 'UNIT', uid: u.uid }))}>
+      <div
+        className={`${cls} ${recallable ? 'recallable' : ''} ${dragUnitUid === u.uid ? 'dragging' : ''}`}
+        draggable={recallable}
+        title={recallable ? 'Drag back to your hand to take it back' : undefined}
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', String(u.uid));
+          setDragUnitUid(u.uid);
+        }}
+        onDragEnd={() => {
+          setDragUnitUid(null);
+          setOverHand(false);
+        }}
+        onClick={() => (mine ? s.selectUnit(u.uid) : unitTargetable(u.uid) && s.attack({ kind: 'UNIT', uid: u.uid }))}>
         <b>{d.name}</b>
         <span>{d.ranged ? '🏹' : '⚔'} {u.power} / ♥ {u.health}</span>
       </div>
@@ -96,7 +114,22 @@ export function Battle() {
       {renderRow('player', 'BACK')}
       {hero('Your Hero', me.heroHealth, me.essence, me.maxEssence, false, me.hand.length)}
 
-      <div className="hand">
+      <div
+        className={`hand ${dragUnitUid !== null ? 'recall-zone' : ''} ${overHand ? 'drop-over' : ''}`}
+        onDragOver={(e) => {
+          if (dragUnitUid !== null) {
+            e.preventDefault();
+            setOverHand(true);
+          }
+        }}
+        onDragLeave={() => setOverHand(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setOverHand(false);
+          if (dragUnitUid !== null) s.recall(dragUnitUid);
+          setDragUnitUid(null);
+        }}
+      >
         {Array.from({ length: MAX_HAND }, (_, i) => {
           const c = me.hand[i];
           if (!c) return <div key={`empty-${i}`} className="card-placeholder" />;

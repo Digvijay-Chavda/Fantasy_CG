@@ -35,6 +35,7 @@ interface GameStore {
   selectUnit: (uid: number) => void;
   deploy: (row: Row, slot: number) => void;
   deployCard: (uid: number, row: Row, slot: number) => void;
+  recall: (unitUid: number) => void;
   attack: (target: AttackTarget) => void;
   endTurn: () => void;
   restart: () => void;
@@ -112,6 +113,14 @@ export const useGameStore = create<GameStore>((set, get) => {
       guard(() => {
         act(() => engine.playCard('player', uid, row, slot));
         sync({ selectedHand: null });
+      });
+    },
+
+    recall: (unitUid) => {
+      if (get().aiThinking || get().game.active !== 'player') return;
+      guard(() => {
+        act(() => engine.recall('player', unitUid));
+        sync({ selectedUnit: null });
       });
     },
 
