@@ -1,0 +1,24 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; }
+body { margin: 0; background: #14101c; color: #e8e2f0; }
+.battle { max-width: 900px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.hero { padding: 8px 12px; background: #2a2038; border-radius: 8px; border: 2px solid transparent; }
+.hero.targetable, .card.targetable { border-color: #ff5470; cursor: pointer; }
+.row { display: grid; grid-template-columns: 80px repeat(3, 1fr); gap: 8px; align-items: stretch; }
+.row-label { font-size: 12px; opacity: .6; align-self: center; }
+.slot { min-height: 76px; border: 1px dashed #4a3d63; border-radius: 8px; display: flex; }
+.slot.open { border-color: #6ee7a8; cursor: pointer; background: #1e2a26; }
+.divider { text-align: center; padding: 4px; opacity: .8; border-top: 1px solid #3a2f50; border-bottom: 1px solid #3a2f50; }
+.card { background: #2c2340; border: 2px solid #4a3d63; border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.unit { flex: 1; }
+.unit.ready { border-color: #f5c542; cursor: pointer; }
+.card.selected { border-color: #7aa2ff; box-shadow: 0 0 8px #7aa2ff; }
+.hand { display: flex; gap: 8px; flex-wrap: wrap; }
+.hand .card { width: 140px; min-height: 110px; opacity: .55; cursor: pointer; }
+.hand .card.playable { opacity: 1; }
+.cost { color: #7aa2ff; font-weight: bold; }
+small { opacity: .75; }
+.controls { display: flex; gap: 8px; align-items: center; }
+button { background: #5b3fd1; color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+button:disabled { opacity: .4; cursor: default; }
+.error { color: #ff8a8a; }
+.overlay { position: fixed; inset: 0; background: #000b; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
