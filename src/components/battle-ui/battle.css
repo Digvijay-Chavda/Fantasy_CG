@@ -12,8 +12,9 @@ body { margin: 0; background: #14101c; color: #e8e2f0; }
 .unit { flex: 1; }
 .unit.ready { border-color: #f5c542; cursor: pointer; }
 .card.selected { border-color: #7aa2ff; box-shadow: 0 0 8px #7aa2ff; }
-.hand { display: grid; grid-template-columns: repeat(5, 1fr); grid-auto-rows: 120px; gap: 8px; }
-.hand .card { height: 100%; box-sizing: border-box; opacity: .55; cursor: pointer; overflow: hidden; }
+.hand { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.hand > * { aspect-ratio: 5 / 7; }
+.hand .card { box-sizing: border-box; opacity: .55; cursor: pointer; overflow: hidden; padding: 0; }
 .hand .card.playable { cursor: grab; }
 .hand .card.dragging { opacity: .25; border-style: dashed; }
 .card-placeholder { border: 1px dashed #3a2f50; border-radius: 8px; background: #181222; }
@@ -33,3 +34,25 @@ button:disabled { opacity: .4; cursor: default; }
 .unit.dragging { opacity: .35; }
 .hand.recall-zone { outline: 2px dashed #6ee7a8; outline-offset: 4px; border-radius: 8px; }
 .hand.recall-zone.drop-over { background: #1e2a26; }
+
+/* ---- card face ---- */
+.card.unit, .hand .card { padding: 0; }
+.card-face { position: relative; flex: 1; display: flex; flex-direction: column; border-radius: 6px; overflow: hidden; background: linear-gradient(#2c2340, #1d1630); }
+.card-art { flex: 0 0 46%; display: flex; align-items: center; justify-content: center; font-size: clamp(22px, 4vw, 40px); border-bottom: 2px solid #0006; background: linear-gradient(135deg, #556, #223); }
+.card-art.rarity-common { background: linear-gradient(135deg, #5a6a7a, #243040); }
+.card-art.rarity-rare { background: linear-gradient(135deg, #3f6fd1, #1b2a5c); }
+.card-art.rarity-epic { background: linear-gradient(135deg, #9b4fd6, #3a1b5c); }
+.card-art.rarity-legendary { background: linear-gradient(135deg, #f0b030, #6a3a10); }
+.card-name { text-align: center; font-weight: 700; font-size: 13px; padding: 3px 4px; background: #00000040; }
+.card-type { text-align: center; font-size: 10px; text-transform: capitalize; opacity: .65; padding-top: 2px; }
+.card-text { font-size: 10.5px; line-height: 1.25; opacity: .85; padding: 4px 8px 22px; text-align: center; }
+.gem { position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: #3d63c9; border: 2px solid #9db8ff; display: grid; place-items: center; font-weight: 700; font-size: 13px; box-shadow: 0 1px 4px #000a; }
+.stat { position: absolute; bottom: 4px; width: 24px; height: 24px; display: grid; place-items: center; font-weight: 700; font-size: 13px; border-radius: 50%; border: 2px solid #fff6; box-shadow: 0 1px 4px #000a; }
+.stat.power { left: 4px; background: #c9702a; }
+.stat.health { right: 4px; background: #b83a4a; }
+.stat.health.hurt { background: #6e1f2a; color: #ffb0b8; }
+.card-face.compact .card-art { flex: 1; font-size: 26px; }
+.card-face.compact .card-name { font-size: 11px; padding: 2px; }
+.card-face.compact .stat { width: 20px; height: 20px; font-size: 11px; bottom: 22px; }
+.slot { min-height: 96px; }
+.unit { min-height: 96px; }
