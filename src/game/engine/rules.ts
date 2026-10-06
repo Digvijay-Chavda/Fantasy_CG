@@ -151,6 +151,22 @@ export function score(state: GameState): Record<PlayerId, number> {
   return s;
 }
 
+/** Tiebreak: total of all printed numbers on the cards each player owns on the board. */
+export function strength(state: GameState, cards: CardRegistry): Record<PlayerId, number> {
+  const s: Record<PlayerId, number> = { player: 0, ai: 0 };
+  for (const c of state.board) if (c) s[c.owner] += total(def(cards, c.cardId));
+  return s;
+}
+
+/** Most cards wins; equal counts fall back to total strength; equal again is a draw. */
+export function decideWinner(state: GameState, cards: CardRegistry): { winner: PlayerId | 'draw'; tiebreak?: Record<PlayerId, number> } {
+  const s = score(state);
+  if (s.player !== s.ai) return { winner: s.player > s.ai ? 'player' : 'ai' };
+  const t = strength(state, cards);
+  if (t.player === t.ai) return { winner: 'draw', tiebreak: t };
+  return { winner: t.player > t.ai ? 'player' : 'ai', tiebreak: t };
+}
+
 /**
  * Captures that placing `cardId` for `pid` in `cell` would make. A neighbouring enemy card flips
  * when the touching number on the placed card is strictly higher than the one on the enemy card.
@@ -194,9 +210,9 @@ export function applyAction(state: GameState, action: Action, cards: CardRegistr
 
   next.moves += 1;
   if (emptyCells(next).length === 0) {
-    const s = score(next);
-    next.winner = s.player === s.ai ? 'draw' : s.player > s.ai ? 'player' : 'ai';
-    events.push({ type: 'GAME_OVER', winner: next.winner, score: s });
+    const { winner, tiebreak } = decideWinner(next, cards);
+    next.winner = winner;
+    events.push({ type: 'GAME_OVER', winner, score: score(next), tiebreak });
   } else {
     next.active = opponentOf(pid);
   }

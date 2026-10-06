@@ -23,6 +23,7 @@ export function describeEvents(events: GameEvent[], cards: CardRegistry, size: n
       case 'GAME_OVER': {
         const result = e.winner === 'draw' ? 'Draw' : e.winner === 'player' ? 'You win' : 'You lose';
         lines.push(`${result}! ${e.score.player} – ${e.score.ai}`);
+        if (e.tiebreak) lines.push(`Cards tied — tiebreak on card strength: you ${e.tiebreak.player}, enemy ${e.tiebreak.ai}`);
         break;
       }
     }

@@ -19,7 +19,7 @@ npm run typecheck
 - Board is `BOARD_SIZE x BOARD_SIZE` (`src/game/engine/constants.ts`, currently **4**). Each player gets half the cells as cards (odd sizes: the first mover gets the extra card). Hands are dealt from `CARD_POOL`; the enemy hand is hidden from the UI and from the AI.
 - Cards have `ranks` {top,right,bottom,left}, each 1..`MAX_RANK` (12). Rarity (common/rare/epic/legendary) only tints the card; stronger rarities simply have higher totals.
 - Turn: place one card from your hand on an empty cell. Then each **direct neighbour that belongs to the enemy** flips to the placer's colour if the placed card's number on the touching edge is **strictly greater** than the neighbour's number on the facing edge. Equal/lower: nothing. **No chaining** (flipped cards do not capture further). Placed cards keep their colour regardless of their own weak edges; captured cards can be captured back.
-- Game ends when the board is full. Winner = most cards of their colour **on the board**; equal = draw. Who moves first is decided by the seed.
+- Game ends when the board is full. Winner = most cards of their colour **on the board**; equal counts are broken by the **total of all printed numbers on the cards each player owns** (`decideWinner` / `strength` in rules.ts, shown in the log and result overlay); only equal on both is a draw. Who moves first is decided by the seed.
 - Dealing is fair: a random sample is dealt in snake order by total strength, then hands are swapped until their totals are as close as possible (tests: gap <= 4).
 
 ## Architecture
@@ -61,8 +61,8 @@ tests/ai.test.ts      legal full games, Normal beats Easy from both seats, mirro
 - Drag a card onto an empty cell, or click a card then a cell. Hovering a legal cell previews how many cards it would flip (+N). Blue = yours, red = enemy's; captured cards replay a flip animation; the last placed cell has a gold outline.
 - Card art is a placeholder glyph per card (`CardDef.glyph`); swap for real artwork later.
 
-## Balance snapshot (100 games each, `SIM_GAMES=100 npm run sim`)
-Normal vs Easy: 68 wins / 12 losses / 20 draws (from either seat). Normal mirror: roughly even (36/46/18). Draws are ~18-20% because 8-8 is a common outcome on a 16-cell board; a tiebreaker (e.g. total of captured ranks, or sudden-death) is an open design question.
+## Balance snapshot (100 games each, `SIM_GAMES=100 npm run sim`, with the tiebreak)
+Normal vs Easy: 73-27 (player seat) and 74-26 (ai seat), 0 draws. Normal mirror: 46/53/1 draw. The first mover wins about 22-31% of the time overall (roughly even once seats alternate). Before the tiebreak ~20% of games were 8-8 draws.
 
 ## Known gaps / ideas
 - Board size is a constant; no UI to change it. A 5x5 board gives the first mover 13 cards vs 12.

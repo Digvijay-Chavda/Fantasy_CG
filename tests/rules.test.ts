@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CARD_POOL, CARDS, buildRegistry } from '../src/data/cards';
-import { GameEngine, MAX_RANK, applyAction, capturesFor, handSizes, neighbour, score } from '../src/game/engine';
+import { GameEngine, MAX_RANK, applyAction, capturesFor, decideWinner, handSizes, neighbour, score, strength } from '../src/game/engine';
 import type { CardDef, GameState, PlayerId, Ranks } from '../src/game/engine';
 
 /** Tiny registry for rule tests: each card is defined by its ranks. */
@@ -118,6 +118,49 @@ describe('turns and ending', () => {
     expect(s.winner).toBe(sc.player === sc.ai ? 'draw' : sc.player > sc.ai ? 'player' : 'ai');
     expect(e.getLegalActions(s.active)).toEqual([]);
     expect(() => e.dispatch(s.active, { type: 'PLACE', uid: 1, cell: 0 })).toThrow();
+  });
+});
+
+describe('tiebreak', () => {
+  const cards = reg({ big: [9, 9, 9, 9], small: [1, 1, 1, 1] });
+  const full = (owners: PlayerId[], ids: string[]): GameState => ({
+    size: 2,
+    board: owners.map((owner, i) => ({ uid: i + 1, cardId: ids[i]!, owner })),
+    hands: { player: [], ai: [] },
+    active: 'player',
+    moves: 4,
+    rngState: 1,
+    winner: null,
+  });
+
+  it('most cards wins without needing the tiebreak', () => {
+    const s = full(['player', 'player', 'player', 'ai'], ['small', 'small', 'small', 'big']);
+    expect(decideWinner(s, cards)).toEqual({ winner: 'player' });
+  });
+
+  it('equal card counts go to the higher total card strength', () => {
+    const s = full(['player', 'player', 'ai', 'ai'], ['big', 'small', 'small', 'small']);
+    expect(strength(s, cards)).toEqual({ player: 40, ai: 8 });
+    expect(decideWinner(s, cards)).toEqual({ winner: 'player', tiebreak: { player: 40, ai: 8 } });
+    const flipped = full(['ai', 'ai', 'player', 'player'], ['big', 'small', 'small', 'small']);
+    expect(decideWinner(flipped, cards).winner).toBe('ai');
+  });
+
+  it('is a draw only when counts and strength are both equal', () => {
+    const s = full(['player', 'player', 'ai', 'ai'], ['big', 'small', 'big', 'small']);
+    expect(decideWinner(s, cards).winner).toBe('draw');
+  });
+
+  it('is applied when the last card is placed', () => {
+    const e = new GameEngine({ cards, pool: ['big', 'small', 'big', 'small'], seed: 1, size: 2, firstPlayer: 'player' });
+    while (!e.getState().winner) {
+      const who = e.getState().active;
+      e.dispatch(who, e.getLegalActions(who)[0]!);
+    }
+    const s = e.getState();
+    const sc = score(s);
+    if (sc.player === sc.ai) expect(s.winner).toBe(decideWinner(s, cards).winner);
+    expect(['player', 'ai', 'draw']).toContain(s.winner);
   });
 });
 

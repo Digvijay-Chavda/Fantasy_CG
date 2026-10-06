@@ -53,7 +53,7 @@ export interface Capture {
 export type GameEvent =
   | { type: 'PLACED'; player: PlayerId; cardId: string; cell: number }
   | ({ type: 'CAPTURED'; by: PlayerId; byCardId: string } & Capture)
-  | { type: 'GAME_OVER'; winner: PlayerId | 'draw'; score: Record<PlayerId, number> };
+  | { type: 'GAME_OVER'; winner: PlayerId | 'draw'; score: Record<PlayerId, number>; tiebreak?: Record<PlayerId, number> };
 
 export interface GameConfig {
   cards: CardRegistry;
